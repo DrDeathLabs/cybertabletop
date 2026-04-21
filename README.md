@@ -234,6 +234,7 @@ page in GitHub and make the packages public.
 - [Security Policy](SECURITY.md)
 - [Commercial Use Terms](COMMERCIAL.md)
 - [Contributing](CONTRIBUTING.md)
+- [Support](SUPPORT.md)
 
 ## GitHub Safety Notes
 

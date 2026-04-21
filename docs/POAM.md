@@ -218,9 +218,9 @@ The POA&M is reviewed monthly by the ISSO and System Owner, and quarterly by the
 
 | Milestone | Target Date | Status |
 |---|---|---|
-| 1. Design previous logon notification UI component | April 15, 2026 | Not Started |
-| 2. Implement backend API to return last login metadata (timestamp, IP, failed attempts since last login) | April 30, 2026 | Not Started |
-| 3. Implement frontend notification display on post-login dashboard | April 30, 2026 | Not Started |
+| 1. Design previous logon notification UI component | May 1, 2026 | Not Started |
+| 2. Implement backend API to return last login metadata (timestamp, IP, failed attempts since last login) | May 15, 2026 | Not Started |
+| 3. Implement frontend notification display on post-login dashboard | May 15, 2026 | Not Started |
 | 4. Test and deploy to production | May 31, 2026 | Not Started |
 | 5. Update SSP AC-9 status to Implemented | June 7, 2026 | Not Started |
 

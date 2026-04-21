@@ -18,6 +18,14 @@ For security reports, follow `SECURITY.md`.
 Before opening a pull request:
 
 1. Run the backend build: `cd backend && npm run build`.
-2. Run the frontend build: `cd frontend && npm run build`.
-3. Run dependency audits: `npm audit` in both `backend` and `frontend`.
-4. Keep changes focused and explain any security impact.
+2. Run the backend tests: `cd backend && npm test`.
+3. Run the frontend build: `cd frontend && npm run build`.
+4. Run the frontend tests and lint when the change touches frontend behavior.
+5. Run dependency audits: `npm audit` in both `backend` and `frontend`.
+6. Update user, install, production, and security documentation when behavior or deployment guidance changes.
+7. Keep changes focused and explain any security impact.
+
+Security-relevant changes include authentication, authorization, MFA,
+session/token handling, audit logging, role management, Docker exposure,
+security headers, dependency updates, AI provider connectivity, and any text
+that operators may use to make deployment decisions.

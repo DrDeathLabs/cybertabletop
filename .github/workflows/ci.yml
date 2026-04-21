@@ -83,6 +83,7 @@ jobs:
       JWT_SECRET: ci-jwt-secret-ci-jwt-secret-ci-jwt-secret-ci-jwt-secret
       JWT_REFRESH_SECRET: ci-refresh-secret-ci-refresh-secret-ci-refresh-secret
       SESSION_SECRET: ci-session-secret
+      MFA_ENCRYPTION_KEY: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
       INVITE_CODE: ci-invite-code
     steps:
       - name: Checkout
