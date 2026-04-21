@@ -56,8 +56,12 @@ The documents in [docs/](docs/) are NIST SP 800-53 Rev. 5 alignment and assessme
 
 ### Prerequisites
 
-- Docker Desktop or Docker Engine
+- Docker Desktop on Windows/macOS, or Docker Engine on Linux
 - Node.js 20+ only if developing outside Docker
+
+CyberTabletop is not Windows-only. The production stack runs Linux containers
+and is intended to work on Windows, macOS, and Linux hosts with Docker. The
+repository includes `install.ps1` for Windows and `install.sh` for Linux/macOS.
 
 ### 1. Configure environment
 
@@ -187,3 +191,18 @@ Do not commit:
 - frontend/backend `dist` folders
 
 The included `.gitignore` is configured for these defaults, but always inspect `git status` before pushing.
+
+## Secret Handling
+
+The Docker Compose stack reads secrets from `.env` and passes them into
+containers as environment variables. This is common for self-hosted Docker
+Compose deployments, but it is not the same thing as an encrypted secret store.
+
+The `DATABASE_URL` value in `docker-compose.yml` is a template expanded from
+`POSTGRES_USER`, `POSTGRES_PASSWORD`, and `POSTGRES_DB` at runtime. It is not a
+hardcoded database password in the repository. Keep `.env` private, use long
+random values, and restrict host access to Docker and the deployment directory.
+
+For production environments with stricter requirements, use your platform's
+secret manager or Docker secrets and inject the resulting values at deployment
+time.

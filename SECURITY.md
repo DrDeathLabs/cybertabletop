@@ -13,6 +13,8 @@ For public deployment:
 - Replace the development/self-signed TLS certificate with a certificate issued by a trusted CA.
 - Keep `.env`, generated TLS private keys, logs, and Docker volumes out of source control.
 - Enforce MFA through the configured OIDC identity provider until local MFA enforcement is implemented.
+- Treat Docker Compose environment variables as secret-bearing configuration, not as encrypted storage.
+- Use alphanumeric database passwords, or URL-encode special characters before embedding them in connection strings.
 
 ## Reporting Vulnerabilities
 

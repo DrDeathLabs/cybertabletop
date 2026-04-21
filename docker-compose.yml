@@ -53,6 +53,8 @@ services:
     environment:
       NODE_ENV: ${NODE_ENV:-production}
       PORT: 3001
+      # Expanded from .env at runtime. Keep POSTGRES_PASSWORD secret.
+      # Use an alphanumeric password, or URL-encode special characters.
       DATABASE_URL: postgresql://${POSTGRES_USER:-cybertabletop}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-cybertabletop}
       JWT_SECRET: ${JWT_SECRET}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
@@ -72,7 +74,8 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       REQUIRE_INVITE: ${REQUIRE_INVITE:-true}
       INVITE_CODE: ${INVITE_CODE:-}
-    # host.docker.internal resolves to the Windows/Mac host from inside Docker
+    # host.docker.internal resolves to the Docker host on Docker Desktop.
+    # host-gateway enables the same pattern on modern Linux Docker engines.
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
