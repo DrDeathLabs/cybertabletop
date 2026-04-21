@@ -36,7 +36,7 @@ This plan covers:
 | Objective | Target | Basis |
 |---|---|---|
 | **Recovery Time Objective (RTO)** | 4 hours | Time to restore system to operational status; acceptable given LOW availability impact |
-| **Recovery Point Objective (RPO)** | 24 hours | Maximum acceptable data loss; aligns with daily backup frequency |
+| **Recovery Point Objective (RPO)** | Operator-defined | Set by the deployment operator based on configured backup frequency and restore testing |
 | **Maximum Tolerable Downtime (MTD)** | 48 hours | Business impact analysis; training exercises can be rescheduled |
 
 ### 1.4 System Overview
@@ -396,8 +396,9 @@ Step 8: Verify restored data
 Step 9: Securely delete decrypted backup files
   Command: shred -u [BACKUP_FILE].dump
 
-Step 10: Run database migrations if needed
-  Command: docker compose run --rm backend npx prisma migrate deploy
+Step 10: Verify database migrations
+  Command: docker compose logs backend
+  Confirm startup logs show Prisma migrations completed with no pending or failed migration errors.
 
 Step 11: Start application
   Command: docker compose start backend
@@ -458,7 +459,7 @@ Step 10: Update DNS to point to new host (if IP address changed)
 Step 11: Verify TLS certificate is valid on new host
 
 Step 12: Run full system acceptance test:
-  - Login as each role (Admin, Facilitator, Participant, Observer)
+  - Login as each role used in the deployment (`SUPER_ADMIN`, `ORG_ADMIN`, `FACILITATOR`, `PLAYER`)
   - Create test exercise session
   - Verify audit logging is functional
   - Verify backup job is scheduled on new host

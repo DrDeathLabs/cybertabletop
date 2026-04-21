@@ -394,13 +394,22 @@ router.get('/security-posture', requireAuth, requireAdmin, async (req: AuthReque
   // â”€â”€ Nginx header evaluation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const nh = nginxProbe.headers;
   const hasXFrame       = nh['x-frame-options']?.toLowerCase().includes('deny') ?? false;
+  const hasCsp          = !!nh['content-security-policy'];
+  const hasFrameAncestors = nh['content-security-policy']?.toLowerCase().includes('frame-ancestors') ?? false;
   const hasXCTO         = nh['x-content-type-options'] === 'nosniff';
-  const hasXXSS         = nh['x-xss-protection']?.startsWith('1') ?? false;
   const hasReferrer     = !!nh['referrer-policy'];
   const hasPermissions  = !!nh['permissions-policy'];
-  const nginxHeaderPass = nginxProbe.reachable && hasXFrame && hasXCTO;
-  const nginxHeaderWarn = nginxProbe.reachable && (!hasXFrame || !hasXCTO);
   const isProduction    = process.env.NODE_ENV === 'production';
+  const frontendUrl     = process.env.FRONTEND_URL ?? '';
+  const localPreviewMode = !isProduction || /localhost|127\.0\.0\.1|\[::1\]/i.test(frontendUrl);
+  const antiFrameRequired = isProduction && !localPreviewMode;
+  const antiFrameConfigured = hasXFrame || hasFrameAncestors;
+  const antiFrameStatus = antiFrameConfigured
+    ? 'configured'
+    : antiFrameRequired
+      ? 'missing for standalone public deployment'
+      : 'intentionally omitted for embedded/local preview';
+  const nginxHeaderPass = nginxProbe.reachable && hasXCTO && hasReferrer && hasPermissions && hasCsp && (!antiFrameRequired || antiFrameConfigured);
 
   // â”€â”€ NIST 800-53 Rev 5 Control Checks â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const controls = [
@@ -412,7 +421,7 @@ router.get('/security-posture', requireAuth, requireAdmin, async (req: AuthReque
       nistControlText:
         'Define and document the types of accounts allowed and specifically prohibited for use within the system. Manage information system accounts, including establishing, activating, modifying, reviewing, disabling, and removing accounts. Require approval for account creation and notify account managers when accounts are no longer required or when system users are terminated.',
       description:
-        'User accounts are actively managed with defined roles. Inactive/unauthorized accounts are disabled. Account status is monitored in real time.',
+        'User accounts are managed through invite-gated registration and admin role review. Account lockout status is monitored in real time.',
       status: controlStatus(registrationControlled && lockedUsers <= 2, registrationRequiresInvite && lockedUsers <= 10),
       detail: `${lockedUsers} account${lockedUsers !== 1 ? 's' : ''} currently locked. ${totalUsers} human users. Registration gate: ${registrationGate.label}. Built-in system account hidden from user totals.`,
       metric: lockedUsers,
@@ -425,7 +434,7 @@ router.get('/security-posture', requireAuth, requireAdmin, async (req: AuthReque
         !registrationControlled
           ? 'Internet-facing deployments must set REQUIRE_INVITE=true and configure a strong INVITE_CODE. Without this, anyone who can reach the site can register a PLAYER account.'
           : lockedUsers > 2
-          ? 'Review locked accounts in the Users tab. Unlock legitimate users or escalate accounts with excessive lockouts to incident response. Investigate IPs associated with failed logins in the Audit Log tab (filter: USER_LOCKED).'
+          ? 'Review locked accounts in the Users tab. Legitimate users can retry after the lockout window expires; repeated lockouts should be escalated to incident response. Investigate IPs associated with failed logins in the Audit Log tab (filter: USER_LOCKED).'
           : null,
     },
     {
@@ -436,13 +445,13 @@ router.get('/security-posture', requireAuth, requireAdmin, async (req: AuthReque
       description:
         'The system enforces a limit on consecutive failed login attempts and automatically locks accounts. Nginx applies network-layer rate limiting. Application-layer rate limiting is enforced via express-rate-limit.',
       status: controlStatus(failedLogins24h === 0, failedLogins24h < 20),
-      detail: `${failedLogins24h} failed login attempt${failedLogins24h !== 1 ? 's' : ''} in past 24 h Â· Auth rate limit: 10 req / 15 min per IP (Nginx: 10 r/m zone) Â· Account auto-lock after threshold exceeded`,
+      detail: `${failedLogins24h} failed login attempt${failedLogins24h !== 1 ? 's' : ''} in past 24 h · Auth rate limit: 10 req / 15 min per IP (Nginx: 10 r/m zone) · Account locks for 30 minutes after 5 failed attempts`,
       metric: failedLogins24h,
       components: ['Application', 'Nginx', 'express-rate-limit', 'PostgreSQL'],
       evidenceSource:
         'Live DB query: prisma.auditLog.count({ where: { action: "USER_LOGIN_FAILED", timestamp: { gte: 24 h ago } } }) + Nginx limit_req_zone=auth:10m rate=10r/m + Express authLimiter (max: 10 / 15 min)',
       complianceNarrative:
-        'Authentication is protected at two layers. Nginx enforces a 10 req/min zone for login traffic, rejecting excess requests with HTTP 429 before they reach the application. Express-rate-limit provides a secondary 10 req/15 min limit keyed by IP. The application records every failed attempt as USER_LOGIN_FAILED in the audit log and locks the account after the threshold. All lockout events are logged as USER_LOCKED (CRITICAL severity).',
+        'Authentication is protected at two layers. Nginx enforces a 10 req/min zone for login traffic, rejecting excess requests with HTTP 429 before they reach the application. Express-rate-limit provides a secondary 10 req/15 min limit keyed by IP. The application records every failed attempt as USER_LOGIN_FAILED in the audit log and locks the account for 30 minutes after five consecutive failed attempts. All lockout events are logged as USER_LOCKED (CRITICAL severity).',
       remediation:
         failedLogins24h >= 20
           ? 'High brute-force activity detected. Review the Audit Log for USER_LOGIN_FAILED events, identify the source IP, and consider blocking at the firewall level. Verify Nginx rate limit zones are active.'
@@ -510,16 +519,16 @@ router.get('/security-posture', requireAuth, requireAdmin, async (req: AuthReque
       nistControlText:
         'Protect audit information and audit logging tools from unauthorized access, modification, and deletion. Alert designated personnel in the event of audit logging tool failures. Backup audit records to maintain their availability.',
       description:
-        'Audit records are append-only. No UPDATE or DELETE operations are permitted on the AuditLog table through the application layer. PostgreSQL access is restricted to the application service account.',
-      status: 'PASS' as ControlStatus,
-      detail: 'Append-only enforcement: no UPDATE/DELETE on AuditLog in application code Â· PostgreSQL service account has restricted permissions Â· Audit log accessible only to SUPER_ADMIN and ORG_ADMIN roles',
+        'Audit records are append-only through the application layer. No UPDATE or DELETE workflow exists for AuditLog records in the app, and audit visibility is restricted to admin roles.',
+      status: 'WARN' as ControlStatus,
+      detail: 'Application append-only path: no UPDATE/DELETE on AuditLog in app code. Audit log UI restricted to SUPER_ADMIN and ORG_ADMIN. External SIEM or write-once storage recommended for tamper-resistant retention.',
       metric: null,
       components: ['Application', 'PostgreSQL', 'Prisma ORM'],
       evidenceSource:
-        'Code audit: services/audit.ts â€” only prisma.auditLog.create() used; no update/delete operations. Admin route requires requireAdmin middleware. PostgreSQL user has only INSERT+SELECT on AuditLog (no UPDATE/DELETE grants).',
+        'Code audit: services/audit.ts uses prisma.auditLog.create(); no application route exposes audit update/delete. Admin route requires requireAdmin middleware. Database administrator access remains an operator-controlled responsibility.',
       complianceNarrative:
-        'Audit record integrity is enforced at the application layer: the audit service only calls prisma.auditLog.create() â€” there are no UPDATE or DELETE operations in any route or service. The audit log endpoints require ORG_ADMIN or SUPER_ADMIN role and are scoped by organization. PostgreSQL connection uses a least-privilege service account. Admin dashboard visibility of audit logs requires elevated role, preventing regular users from viewing or tampering with records.',
-      remediation: null,
+        'Audit record integrity is enforced at the application layer: the audit service creates audit records and the application does not expose audit modification or deletion workflows. The audit log endpoints require ORG_ADMIN or SUPER_ADMIN role and are scoped by organization. For stronger non-repudiation, operators should forward audit records to append-only external storage or a SIEM and restrict direct database administrator access.',
+      remediation: 'Forward audit logs to a SIEM or write-once log store for tamper-resistant retention, and restrict direct database administrator access in production.',
     },
     {
       id: 'AU-12', family: 'AU', name: 'Audit Record Generation',
@@ -535,7 +544,7 @@ router.get('/security-posture', requireAuth, requireAdmin, async (req: AuthReque
       evidenceSource:
         `Live infrastructure probe: PostgreSQL ${pgStats.error ? '(probe failed: ' + pgStats.error + ')' : `version=${pgStats.version}, active_connections=${pgStats.activeConnections}, max_connections=${pgStats.maxConnections}, db_size=${pgStats.dbSizeMb} MB`}. Audit event count from prisma.auditLog.count().`,
       complianceNarrative:
-        `Audit record generation is active and tied to application events via the centralized audit service. Every security-relevant action calls the audit() function which writes synchronously to PostgreSQL. The database is running ${pgStats.error ? 'with probe errors â€” verify connectivity' : pgStats.version + ' with ' + pgStats.dbSizeMb + ' MB allocated'}. The AuditLog table is write-only from the application, with reads restricted to admin roles. Records are generated at the point of each event occurrence, not batched.`,
+        `Audit record generation is active and tied to application events via the centralized audit service. Every security-relevant action calls the audit() function which writes synchronously to PostgreSQL. The database is running ${pgStats.error ? 'with probe errors â€” verify connectivity' : pgStats.version + ' with ' + pgStats.dbSizeMb + ' MB allocated'}. The application write path for AuditLog is centralized, and reads are restricted to admin roles. Records are generated at the point of each event occurrence, not batched.`,
       remediation:
         totalAuditEntries === 0
           ? 'No audit records found. Ensure the backend service is writing to the AuditLog table. Check database connectivity and Prisma schema migration status.'
@@ -647,19 +656,21 @@ router.get('/security-posture', requireAuth, requireAdmin, async (req: AuthReque
       description:
         'All external traffic is TLS-encrypted via Nginx. Security headers (HSTS, X-Content-Type-Options, etc.) are enforced at both Nginx and application layers. Cookies use sameSite=strict.',
       status: controlStatus(
-        isProduction && nginxProbe.reachable && hasXCTO,
-        !isProduction || (nginxProbe.reachable && !hasXCTO),
+        isProduction && nginxHeaderPass,
+        nginxProbe.reachable && hasXCTO,
       ),
-      detail: `${isProduction ? 'Production mode' : 'Non-production mode'} Â· Nginx: ${nginxProbe.reachable ? 'reachable' : 'probe failed'} Â· X-Frame-Options: ${hasXFrame ? 'âœ“ DENY' : 'âœ— missing'} Â· X-Content-Type-Options: ${hasXCTO ? 'âœ“ nosniff' : 'âœ— missing'} Â· X-XSS-Protection: ${hasXXSS ? 'âœ“ present' : 'âœ— missing'} Â· Referrer-Policy: ${hasReferrer ? 'âœ“ present' : 'âœ— missing'} Â· Helmet.js: HSTS maxAge=31536000 Â· sameSite=strict cookies`,
+      detail: `${isProduction ? 'Production mode' : 'Non-production mode'} · Nginx: ${nginxProbe.reachable ? 'reachable' : 'probe failed'} · Anti-frame: ${antiFrameStatus} · X-Content-Type-Options: ${hasXCTO ? 'present' : 'missing'} · Referrer-Policy: ${hasReferrer ? 'present' : 'missing'} · Permissions-Policy: ${hasPermissions ? 'present' : 'missing'} · CSP: ${hasCsp ? 'present' : 'missing'} · sameSite=strict cookies`,
       metric: null,
       components: ['Nginx', 'TLS/SSL', 'Application', 'Helmet.js'],
       evidenceSource:
-        `Live infrastructure probe: HTTP HEAD nginx:80 headers: ${JSON.stringify({ 'x-frame-options': nh['x-frame-options'], 'x-content-type-options': nh['x-content-type-options'], 'x-xss-protection': nh['x-xss-protection'], 'referrer-policy': nh['referrer-policy'] })}. Static config: nginx.conf ssl_protocols TLSv1.2 TLSv1.3, HSTS max-age=31536000. Helmet.js hsts config in middleware/security.ts.`,
+        `Live infrastructure probe: HTTP HEAD nginx:80 headers: ${JSON.stringify({ 'x-frame-options': nh['x-frame-options'], 'content-security-policy': nh['content-security-policy'], 'x-content-type-options': nh['x-content-type-options'], 'referrer-policy': nh['referrer-policy'], 'permissions-policy': nh['permissions-policy'] })}. Static config: nginx.conf ssl_protocols TLSv1.2 TLSv1.3, HSTS max-age=31536000. Helmet.js hsts config in middleware/security.ts.`,
       complianceNarrative:
-        'TLS 1.2/1.3 encryption is enforced by Nginx with ECDHE cipher suites. HSTS (max-age=1 year, includeSubDomains, preload) prevents protocol downgrade attacks. Nginx and Helmet.js jointly apply security headers on all responses. Cookies use httpOnly=true (prevents XSS extraction), sameSite=strict (prevents CSRF), and secure=true in production. The server version is hidden (server_tokens off in Nginx, X-Powered-By disabled in Express).',
+        'TLS 1.2/1.3 encryption is enforced by Nginx with ECDHE cipher suites. HSTS (max-age=1 year, includeSubDomains, preload) prevents protocol downgrade attacks. Nginx and Helmet.js jointly apply security headers on responses. The bundled localhost configuration intentionally omits anti-frame headers so embedded preview browsers can load the app; standalone public deployments should add X-Frame-Options or CSP frame-ancestors at the public edge. Cookies use httpOnly=true, sameSite=strict, and secure=true in production. The server version is hidden (server_tokens off in Nginx, X-Powered-By disabled in Express).',
       remediation:
         !isProduction
           ? 'System is running in non-production mode. TLS enforcement is reduced. Ensure NODE_ENV=production in .env before deploying to production environments.'
+          : antiFrameRequired && !antiFrameConfigured
+          ? 'Standalone public deployment is missing anti-frame protection. Add Content-Security-Policy frame-ancestors or X-Frame-Options at the public edge unless this deployment is intentionally embedded.'
           : !nginxHeaderPass
           ? 'Security headers missing from Nginx responses. Verify that add_header directives in nginx.conf use the "always" flag and that the nginx container has been reloaded after config changes.'
           : null,
@@ -691,15 +702,15 @@ router.get('/security-posture', requireAuth, requireAdmin, async (req: AuthReque
         'Implement cryptographic mechanisms to prevent unauthorized disclosure and modification of the following information at rest on system components, digital media, and backup storage.',
       description:
         'Passwords are one-way hashed with bcrypt (cost 12). MFA TOTP secrets are stored encrypted. No plaintext credentials are stored. PostgreSQL data files are stored on a dedicated Docker volume.',
-      status: 'PASS' as ControlStatus,
-      detail: `bcrypt cost=12 (~250 ms/hash, GPU-resistant) Â· MFA secrets: encrypted field Â· No plaintext passwords Â· PostgreSQL ${pgStats.error ? '(probe failed)' : pgStats.version + ', ' + pgStats.dbSizeMb + ' MB on postgres_data volume'} Â· Redis data persisted on redis_data volume with AOF`,
+      status: 'WARN' as ControlStatus,
+      detail: `bcrypt cost=12 · MFA secrets encrypted with AES-256-GCM · Recovery codes hashed · PostgreSQL ${pgStats.error ? '(probe failed)' : pgStats.version + ', ' + pgStats.dbSizeMb + ' MB on postgres_data volume'} · Volume and backup encryption are operator-controlled`,
       metric: null,
       components: ['Application', 'PostgreSQL', 'bcrypt', 'Redis'],
       evidenceSource:
-        `Static code audit: bcrypt.hash(password, 12) in auth routes. MFA secret encrypted using speakeasy with encrypted storage. PostgreSQL probe: version=${pgStats.version}, db_size=${pgStats.dbSizeMb} MB. Redis probe: alive=${redisProbe.alive}.`,
+        `Static code audit: bcrypt.hash(password, 12) in auth routes. MFA secrets are encrypted before storage and recovery codes are bcrypt-hashed. PostgreSQL probe: version=${pgStats.version}, db_size=${pgStats.dbSizeMb} MB. Redis probe: alive=${redisProbe.alive}.`,
       complianceNarrative:
-        'User passwords are never stored in plaintext. bcrypt with cost factor 12 produces hashes that require approximately 250 ms to compute on modern hardware, making large-scale offline brute-force attacks infeasible. MFA TOTP secrets are stored in an encrypted field. Database files reside on a dedicated Docker named volume (postgres_data), isolated from the host filesystem. Redis uses AOF persistence on a dedicated volume. Application-level access is controlled via the Prisma ORM with parameterized queries, preventing SQL injection.',
-      remediation: null,
+        'User passwords are never stored in plaintext. bcrypt with cost factor 12 makes offline brute-force attacks materially more expensive. MFA TOTP secrets are encrypted with MFA_ENCRYPTION_KEY and recovery codes are stored only as bcrypt hashes. Database files reside on Docker named volumes; host disk, database-volume, Redis persistence, and backup encryption depend on the operator deployment environment.',
+      remediation: 'For production, enable host or cloud volume encryption, protect Docker volumes, and store backups in encrypted storage with tested restore procedures.',
     },
 
     // â”€â”€ IR: Incident Response â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -736,18 +747,18 @@ router.get('/security-posture', requireAuth, requireAdmin, async (req: AuthReque
       nistControlText:
         'Establish and document configuration settings for information technology products that reflect the most restrictive mode consistent with operational requirements. Implement the configuration settings; identify, document, and approve any deviations from established configuration settings.',
       description:
-        'System is deployed with security-hardened settings: Nginx security headers, Helmet.js CSP/HSTS, startup environment validation, and no permissive defaults.',
+        'System is deployed with security-hardened settings: Nginx security headers, Helmet.js CSP/HSTS, startup environment validation, privileged MFA, and no permissive defaults.',
       status: controlStatus(
         nginxHeaderPass && isProduction,
         nginxHeaderPass && !isProduction,
       ),
-      detail: `Helmet.js: HSTS Â· CSP Â· X-Frame-Options Â· X-Content-Type-Options Â· Referrer-Policy Â· Nginx: ${nginxProbe.reachable ? 'X-Frame=${hasXFrame ? "âœ“" : "âœ—"} XCTO=${hasXCTO ? "âœ“" : "âœ—"} XSS=${hasXXSS ? "âœ“" : "âœ—"} Referrer=${hasReferrer ? "âœ“" : "âœ—"} Permissions=${hasPermissions ? "âœ“" : "âœ—"}' : 'probe failed'} Â· ENV validation at startup (JWT_SECRET â‰¥32 chars) Â· server_tokens off`,
+      detail: `Helmet.js: HSTS · CSP · X-Content-Type-Options · Referrer-Policy · Permissions-Policy · Anti-frame: ${antiFrameStatus} · Nginx: ${nginxProbe.reachable ? `XCTO=${hasXCTO ? 'present' : 'missing'} CSP=${hasCsp ? 'present' : 'missing'} Referrer=${hasReferrer ? 'present' : 'missing'} Permissions=${hasPermissions ? 'present' : 'missing'}` : 'probe failed'} · Startup env validation · server_tokens off`,
       metric: null,
       components: ['Application', 'Nginx', 'Helmet.js'],
       evidenceSource:
-        `Live infrastructure probe nginx:80 headers: x-frame-options="${nh['x-frame-options'] ?? 'N/A'}", x-content-type-options="${nh['x-content-type-options'] ?? 'N/A'}", x-xss-protection="${nh['x-xss-protection'] ?? 'N/A'}", referrer-policy="${nh['referrer-policy'] ?? 'N/A'}", permissions-policy="${nh['permissions-policy'] ? 'present' : 'N/A'}". Code audit: middleware/security.ts setupSecurity() + index.ts startup env validation.`,
+        `Live infrastructure probe nginx:80 headers: x-frame-options="${nh['x-frame-options'] ?? 'N/A'}", content-security-policy="${nh['content-security-policy'] ? 'present' : 'N/A'}", x-content-type-options="${nh['x-content-type-options'] ?? 'N/A'}", referrer-policy="${nh['referrer-policy'] ?? 'N/A'}", permissions-policy="${nh['permissions-policy'] ? 'present' : 'N/A'}". Code audit: middleware/security.ts setupSecurity() + index.ts startup env validation.`,
       complianceNarrative:
-        'Security hardening is applied at startup and enforced throughout. Helmet.js configures: HSTS (1 year, includeSubDomains, preload), CSP (default-src "self", no inline scripts), X-Frame-Options DENY, X-Content-Type-Options nosniff, Referrer-Policy strict-origin-when-cross-origin. Nginx applies the same headers at the network layer as defense-in-depth. The Express application disables the X-Powered-By header. At startup, the application validates that JWT_SECRET exists and is â‰¥32 characters â€” a missing or weak secret causes an immediate process exit.',
+        'Security hardening is applied at startup and enforced throughout. Helmet.js configures HSTS, CSP, X-Content-Type-Options, and Referrer-Policy. Nginx applies edge headers as defense-in-depth. The bundled localhost profile omits anti-frame headers for embedded preview compatibility; standalone public deployments should enforce frame-ancestors or X-Frame-Options at the public edge. Express disables X-Powered-By. Startup validation requires strong JWT secrets and MFA_ENCRYPTION_KEY in production.',
       remediation:
         !nginxHeaderPass
           ? 'Security headers not detected from Nginx probe. Verify nginx container is running and nginx.conf add_header directives include the "always" flag. Reload nginx after config changes: docker compose exec nginx nginx -s reload'
@@ -880,7 +891,7 @@ router.get('/security-posture', requireAuth, requireAdmin, async (req: AuthReque
       evidenceSource:
         `Live DB queries: prisma.auditLog.count() = ${totalAuditEntries}, prisma.auditLog.findFirst({ orderBy: { timestamp: "asc" } }) = ${oldestAuditEntry ? new Date(oldestAuditEntry.timestamp).toISOString() : 'null'}. Retention days calculated as (now - oldest) / ms_per_day = ${auditRetentionDays} days.`,
       complianceNarrative:
-        'Audit records are stored in PostgreSQL with no expiry or automated deletion mechanism. Records accumulate indefinitely until the storage volume is full. The append-only design (AU-9) ensures records cannot be modified. NIST 800-53 and FedRAMP typically require 90-day online retention and 3-year archival. Organizations should monitor database growth and implement archival exports (use the CSV export in the SOC Audit Log tab) for long-term retention. Consider a pg_dump backup schedule for archival.',
+        'Audit records are stored in PostgreSQL with no expiry or automated deletion mechanism. Records accumulate until the storage volume is full or an operator archives them. The application does not expose audit update/delete workflows, but database administrators can still modify data unless operators add external tamper-resistant storage. NIST 800-53 and FedRAMP commonly require 90-day online retention and longer archival. Organizations should monitor database growth and implement archival exports or SIEM forwarding for long-term retention.',
       remediation:
         auditRetentionDays < 30
           ? 'Audit record retention is under 30 days â€” this may not meet regulatory requirements. The system may be recently deployed, or records may have been purged. Verify no audit records have been deleted and ensure adequate PostgreSQL storage.'

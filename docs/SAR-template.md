@@ -78,7 +78,7 @@
 
 **Recommended Conditions (if applicable):**
 
-1. [Condition 1, e.g., "POAM-001 (MFA for administrative accounts) must be implemented within 90 days of ATO grant."]
+1. [Condition 1, e.g., "Restore testing must be completed and documented before production operation."]
 2. [Condition 2]
 3. [Condition 3]
 
@@ -109,7 +109,7 @@
 |---|---|---|
 | Frontend | React.js | 18.x |
 | Backend | Node.js / Express | 20.x LTS |
-| Database | PostgreSQL | 15.x |
+| Database | PostgreSQL | 16.x |
 | Real-Time | Socket.io | 4.x |
 | Proxy | Nginx | 1.24.x |
 | Containers | Docker | 24.x |
@@ -235,9 +235,9 @@ Instructions: Complete one section per finding. Copy the template block below fo
 
 ### Finding CTT-FIND-001
 
-**Finding Title:** [Descriptive title, e.g., "Multi-Factor Authentication Not Enforced for Local Administrator Accounts"]
+**Finding Title:** [Descriptive title, e.g., "Backup Restore Testing Not Completed"]
 
-**Control Reference:** [e.g., IA-2(1) — Identification and Authentication | Multi-Factor Authentication to Privileged Accounts]
+**Control Reference:** [e.g., CP-9 — System Backup]
 
 **Severity:** [Critical / High / Medium / Low / Informational]
 
@@ -247,33 +247,32 @@ Instructions: Complete one section per finding. Copy the template block below fo
 
 [Provide a detailed description of the finding. Include: what the control requires, what was observed during the assessment, how the observation differs from the requirement, and why this constitutes a security risk. Be specific about what was tested, reviewed, or observed. Example:]
 
-> During technical testing (CTT-TT-001), the assessment team confirmed that users can create local Administrator accounts in CyberTabletop with only a password credential, without any MFA requirement. Specifically, the assessors created a test Administrator account using the local authentication pathway and successfully authenticated using only a username and password, with no second factor prompt. The SSP acknowledges this as a partial implementation (AC-2(1), PI status), and POAM-001 documents a planned remediation.
+> During technical testing (CTT-TT-010), the assessment team confirmed that backup creation scripts are present and can create a PostgreSQL dump, but no completed restore drill evidence was provided for the target deployment environment.
 >
-> NIST SP 800-53 Rev 5 control IA-2(1) requires MFA for privileged accounts. For a MODERATE-impact system, this is a baseline control. Privileged accounts (Administrators) have the ability to create and delete user accounts, access all audit logs, and modify system configuration. Compromise of an Administrator account through credential stuffing, phishing, or brute force could result in full system compromise.
+> NIST SP 800-53 Rev 5 control CP-9 requires system backup capability, and CP-10 requires recovery capability. Backups are not a complete control until a restore has been tested in a clean environment.
 
 **Evidence:**
 
 [Describe the specific evidence observed. Do not include actual credentials or sensitive configuration data. Include sanitized screenshots or log excerpts as appendices. Example:]
 
-> - Screenshot APP-ADMIN-001 (Appendix A): Login page showing no MFA prompt after password entry for Administrator account
-> - Interview record CTT-INT-002: System Administrator confirmed that MFA enforcement is not currently configured for local accounts
-> - SSP Section 9.7 (IA-2(1)): Implementation status documented as "Partially Implemented"
+> - Script review: `scripts/backup.sh`, `scripts/backup.ps1`, `scripts/restore.sh`, and `scripts/restore.ps1`
+> - Test evidence: backup creation completed
+> - Missing evidence: restore into clean stack not yet documented
 
 **Risk:**
 
 [Describe the specific risk posed by this finding.]
 
-> If an Administrator account is compromised through password-based attack, the attacker gains full administrative access to the CyberTabletop platform, including the ability to access all user data, export audit logs, modify exercise scenarios, and potentially pivot to underlying infrastructure. For a training system without classified data, the impact is moderate, but the risk is meaningful given the lack of a compensating control for local accounts.
+> If backups cannot be restored reliably, a database loss or failed upgrade could result in extended outage or loss of exercise, scenario, user, and audit data.
 
 **Recommendation:**
 
 [Provide specific, actionable remediation guidance.]
 
-> 1. Configure Passport.js TOTP middleware (e.g., speakeasy + node-2fa) or a compatible MFA library to enforce second-factor authentication for all Administrator and Facilitator accounts on local authentication.
-> 2. Alternatively, disable local Administrator accounts and require all Administrators to authenticate via the enterprise OIDC provider, which enforces MFA at the IdP level.
-> 3. Update the SSP IA-2(1) entry to reflect the remediated implementation status.
-> 4. Update POAM-001 to reflect completion upon remediation.
-> 5. Verify remediation by re-testing the authentication flow.
+> 1. Restore a recent CyberTabletop backup into a clean Docker stack.
+> 2. Confirm the backend starts, Prisma migrations report no pending failures, and core login/session workflows operate against the restored database.
+> 3. Record restore duration, operator steps, issues, and corrective actions.
+> 4. Repeat restore testing on a recurring schedule.
 
 **ISSO Response:**
 

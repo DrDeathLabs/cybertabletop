@@ -33,16 +33,16 @@ This matrix provides an at-a-glance reference for the implementation status of a
 | Control ID | Control Name | Status | Implementation Description | Responsible Party | Evidence Location |
 |---|---|---|---|---|---|
 | AC-1 | Policy and Procedures | I | Access control policy documented in [ORGANIZATION] IS Policy and this SSP; reviewed annually | ISSO / System Owner | [ORGANIZATION] IS Policy; SSP Section 6.1 |
-| AC-2 | Account Management | I | Four RBAC roles (Admin, Facilitator, Participant, Observer); accounts reviewed quarterly; 90-day inactivity auto-disable | System Admin / ISSO | SSP §6.1; Account Management SOP; Audit Logs |
-| AC-2(1) | Automated Account Management | I | Automated disable after 90-day inactivity; lockout after 5 failed attempts; admin notifications for account events | System (Automated) | Application Code; Audit Logs |
-| AC-2(2) | Temp/Emergency Account Management | I | Time-limited accounts with enforced expiration dates; expiration notifications at T-7 days | System Admin | Application Configuration; Audit Logs |
+| AC-2 | Account Management | I | Four application roles (`SUPER_ADMIN`, `ORG_ADMIN`, `FACILITATOR`, `PLAYER`); first non-system account becomes SUPER_ADMIN; invite-gated registration and admin role management supported | System Admin / ISSO | SSP §6.1; Account Management SOP; Audit Logs |
+| AC-2(1) | Automated Account Management | PI | Account lockout after 5 failed login attempts; first-account bootstrap to SUPER_ADMIN; role changes and user lifecycle events are audit logged. Automated inactivity disable and notification workflow are operator/planned controls. | System / Operator | Application Code; Audit Logs; Operator Policy |
+| AC-2(2) | Temp/Emergency Account Management | PI | The application supports admin role changes and account deletion, but does not currently enforce temporary-account expiration dates. Operators should manage temporary access through OIDC/SSO or documented local access reviews. | System Admin | Operator Policy; Audit Logs |
 | AC-2(3) | Disable Accounts | I | Non-destructive disablement; accounts disabled within 1 business day of termination notification | System Admin / HR | HR Termination SOP; Audit Logs |
 | AC-2(4) | Automated Audit of Account Actions | I | All account CRUD and role change events auto-logged in PostgreSQL audit_events table | System (Automated) | Audit Log Schema; Application Middleware |
 | AC-3 | Access Enforcement | I | RBAC enforced at API layer on every endpoint via Express middleware; JWT validation on all protected routes | Dev Team / System | API Authorization Middleware; Role-Permission Matrix |
 | AC-4 | Information Flow Enforcement | I | Nginx restricts inbound to HTTPS 443; Docker network prevents external DB/cache access; CSP via Helmet.js | Dev Team / Net Admin | Nginx Config; Docker Compose Network Config; Helmet.js Config |
 | AC-5 | Separation of Duties | I | Four-role RBAC prevents single-role accumulation of admin+facilitation functions; dual approval for production changes | System Owner / Dev Team | RBAC Role Definitions; Change Control SOP |
 | AC-6 | Least Privilege | I | Roles assigned minimum required permissions; service accounts use minimal DB permissions (no DROP/CREATE/GRANT) | Dev Team / Sys Admin | Role-Permission Matrix; DB Permission Grants; Docker User Config |
-| AC-6(1) | Authorize Access to Security Functions | I | Security functions restricted to Administrator role; access list maintained and reviewed | Sys Admin / ISSO | Administrator Role Definition; Access List |
+| AC-6(1) | Authorize Access to Security Functions | I | Security functions restricted to SUPER_ADMIN and ORG_ADMIN as appropriate; access list should be maintained and reviewed by the operator | Sys Admin / ISSO | Role Definition; Access Review |
 | AC-6(2) | Non-Privileged Access for Non-Privileged Functions | I | Admins use separate contexts for admin vs. standard functions | Dev Team | Application Role Switching Logic |
 | AC-6(9) | Log Use of Privileged Functions | I | All privileged function invocations logged with user identity, timestamp, and function | System (Automated) | Audit Log; Privileged Functions List |
 | AC-6(10) | Prohibit Privileged Functions by Non-Privileged Users | I | API middleware returns HTTP 403 and generates audit entry for unauthorized privilege attempts | Dev Team / System | API Authorization Middleware; Audit Logs |
@@ -51,7 +51,7 @@ This matrix provides an at-a-glance reference for the implementation status of a
 | AC-9 | Previous Logon Notification | P | Not currently displayed at login; planned for next sprint; account history page available as interim | Dev Team | POA&M POAM-005 |
 | AC-10 | Concurrent Session Control | I | Maximum 3 concurrent sessions per account; oldest session terminated when exceeded; enforced via Redis | System (Automated) | Session Management Config; Redis Session Tracking |
 | AC-11 | Device Lock | NA | Web application; device lock is end-user workstation responsibility outside authorization boundary | N/A | Tailoring Rationale in SSP |
-| AC-12 | Session Termination | I | 30-minute inactivity timeout; immediate termination on logout; JWT blocklist in Redis | System (Automated) | Session Config; Redis Blocklist Implementation |
+| AC-12 | Session Termination | I | Short-lived access tokens, server-side hashed refresh tokens with rotation/revocation, and cookie clearing on logout | System (Automated) | Token Config; RefreshToken Table; Logout Route |
 | AC-14 | Permitted Actions Without I&A | I | Only login page viewing and credential submission permitted unauthenticated; all functional content requires auth | Dev Team | Application Route Configuration |
 | AC-17 | Remote Access | I | User access via HTTPS only; admin access requires VPN + MFA; database ports not externally exposed | Net Admin / Sys Admin | Nginx Config; VPN Policy; Firewall Rules |
 | AC-18 | Wireless Access | INH | Inherited from [ORGANIZATION] wireless network security program | [ORGANIZATION] Net Ops | [ORGANIZATION] Wireless Security Policy |
@@ -87,7 +87,7 @@ This matrix provides an at-a-glance reference for the implementation status of a
 | AU-6 | Audit Review, Analysis, Reporting | I | Weekly ISSO audit review; automated alerts for anomalous patterns; monthly summary reports to management | ISSO / Sys Admin | Audit Review SOP; Alert Config; Monthly Report Template |
 | AU-7 | Audit Reduction and Report Generation | I | Admin UI provides search/filter by date, user, event type, IP; export capability for external analysis | System / ISSO | Admin Audit Interface; Export Functionality |
 | AU-8 | Time Stamps | I | All records use UTC timestamps with millisecond precision; NTP synchronization to authoritative time source | System (Automated) | NTP Configuration; Timestamp Format Documentation |
-| AU-9 | Protection of Audit Information | I | Audit schema: INSERT-only for service account; no UPDATE/DELETE; separate from operational tables; DBA access logged | Dev Team / DBA | DB Permission Grants; Audit Table Schema |
+| AU-9 | Protection of Audit Information | PI | Audit records are application-managed and security events are logged; operators should forward logs to append-only external storage or SIEM for tamper resistance | Dev Team / DBA | Audit Table Schema; Logging Configuration; SIEM Plan |
 | AU-9(4) | Access by Subset of Privileged Users | I | Audit access restricted to ISSO, designated reviewers, DBA; app Admin role view-only via UI | ISSO / DBA | Access Control List; DB Role Definitions |
 | AU-10 | Non-Repudiation | I | Validated JWT identity immutably recorded in audit log; users cannot deny logged actions | System (Automated) | JWT Validation Logic; Audit Log Immutability |
 | AU-11 | Audit Record Retention | I | 1 year online; 3 years total (2 years archived); per [ORGANIZATION] records management policy | Sys Admin / DBA | Retention Schedule; Archive SOP |
@@ -120,11 +120,11 @@ This matrix provides an at-a-glance reference for the implementation status of a
 |---|---|---|---|---|---|
 | CM-1 | Policy and Procedures | I | CM policy documented in CMP-CTT-001; reviewed annually | System Owner / ISSO | CMP-CTT-001 |
 | CM-2 | Baseline Configuration | I | Baselines documented for Docker images (pinned tags), Nginx, Node.js, PostgreSQL, Redis; stored in version control | Sys Admin / Dev Team | CMP-CTT-001; Docker Compose File; Git Repository |
-| CM-2(2) | Automation Support | I | Docker image digests (SHA256) verify integrity at deployment; IaC defines baseline in version-controlled format | Dev Team | CI/CD Pipeline; Image Verification Scripts |
+| CM-2(2) | Automation Support | PI | Docker Compose baselines are version controlled and CI validates compose configuration/builds; operators should pin image digests and verify signatures for higher-assurance deployments | Dev Team / Operator | CI/CD Pipeline; Compose Files; Operator Deployment Policy |
 | CM-3 | Configuration Change Control | I | Change request → security impact analysis → CAB review → non-prod test → prod deployment → verification; emergency process documented | Sys Admin / Dev Team | CMP-CTT-001; Change Control SOP; CAB Charter |
 | CM-4 | Impact Analyses | I | Security impact analysis required for all configuration changes; ISSO reviews security-relevant changes | ISSO / Dev Team | Change Request Form; Impact Analysis Template |
 | CM-5 | Access Restrictions for Change | I | Write access to production config restricted to designated Sys Admins; devs have no direct production access | Sys Admin / Dev Team | RBAC for Infrastructure; Change Control SOP |
-| CM-6 | Configuration Settings | I | Security-relevant settings documented and enforced: TLS 1.2+, cipher suites, HSTS, CSP, bcrypt factor 12, session timeout 30 min, lockout 5 attempts | Sys Admin / Dev Team | CMP-CTT-001; Application Security Config |
+| CM-6 | Configuration Settings | I | Security-relevant settings documented and enforced: TLS 1.2+, cipher suites, HSTS, CSP, bcrypt factor 12, TOTP MFA for privileged roles, lockout after 5 failed attempts | Sys Admin / Dev Team | CMP-CTT-001; Application Security Config |
 | CM-7 | Least Functionality | I | Unnecessary services/ports/protocols disabled; Docker exposes only required ports; Nginx blocks non-app endpoints | Sys Admin / Dev Team | Nginx Config; Docker Port Mapping; Service Inventory |
 | CM-7(1) | Periodic Review | I | Quarterly configuration review for unnecessary functions; documented findings and tracking | Sys Admin / ISSO | Quarterly Review Records |
 | CM-8 | System Component Inventory | I | Software inventory: Docker images, npm packages (package-lock.json); updated each deployment; reviewed monthly for vulns | Sys Admin | Software Inventory; npm Dependency List |
@@ -145,8 +145,8 @@ This matrix provides an at-a-glance reference for the implementation status of a
 | CP-4 | Contingency Plan Testing | I | Annual tabletop exercise + backup restoration validation; test results documented and used to update plan | System Owner / Sys Admin | Test Records; Updated CP |
 | CP-6 | Alternate Storage Site | I | Encrypted backups at alternate location (separate DC or cross-region cloud); restoration capability verified quarterly | Sys Admin / DBA | Backup Location Configuration; Restoration Test Records |
 | CP-7 | Alternate Processing Site | P | Alternate processing capability planning in progress; containerized architecture supports rapid redeployment | System Owner / Sys Admin | POA&M POAM-007; CP-CTT-001 Alternate Site Section |
-| CP-9 | System Backup | I | Daily PostgreSQL pg_dump; AES-256 encryption before offsite transfer; weekly checksum verification; quarterly restoration test | Sys Admin / DBA | Backup SOP; Backup Job Configuration; Test Records |
-| CP-10 | System Recovery | I | Recovery procedures documented in CP-CTT-001: DB restore, container redeployment, validation testing; RTO 4 hours | Sys Admin / DBA | CP-CTT-001 Recovery Procedures |
+| CP-9 | System Backup | PI | Backup and restore scripts are provided for PostgreSQL (`scripts/backup.*`, `scripts/restore.*`); operators must schedule backups, protect backup files, and document retention/encryption | Sys Admin / DBA | Backup Scripts; Backup SOP; Operator Configuration |
+| CP-10 | System Recovery | PI | Recovery procedures documented in CP-CTT-001 and restore scripts provided; restore testing must be completed in the operator environment before production reliance | Sys Admin / DBA | CP-CTT-001 Recovery Procedures; Restore Test Records |
 | CP-13 | Alternative Security Mechanisms | PI | Containerized architecture enables alternative deployment to alternate cloud region; full alternate site in planning | System Owner | POA&M POAM-007 |
 
 ---
@@ -156,18 +156,18 @@ This matrix provides an at-a-glance reference for the implementation status of a
 | Control ID | Control Name | Status | Implementation Description | Responsible Party | Evidence Location |
 |---|---|---|---|---|---|
 | IA-1 | Policy and Procedures | I | I&A policy documented in [ORGANIZATION] security policy and this SSP | ISSO / System Owner | [ORGANIZATION] Security Policy; SSP |
-| IA-2 | Identification and Authentication | I | Unique user ID (email); local auth via bcrypt (factor 12) + JWT (httpOnly cookies); OIDC SSO supported; TOTP MFA available | System / Dev Team | Authentication Code; bcrypt Configuration; OIDC Integration |
-| IA-2(1) | MFA to Privileged Accounts | PI | MFA required for Administrator accounts; TOTP enforced on admin login; other privileged roles (Facilitator) have MFA available but not mandated | Sys Admin / ISSO | Admin Account Config; MFA Enforcement Code; POA&M POAM-001 |
-| IA-2(2) | MFA to Non-Privileged Accounts | PI | TOTP MFA available for all accounts; enrollment prompted but not mandated for standard accounts; mandate in planning | Sys Admin / ISSO | MFA Configuration; POA&M POAM-001 |
+| IA-2 | Identification and Authentication | I | Unique user ID (email); local auth via bcrypt (factor 12) + JWT (httpOnly cookies); OIDC SSO supported; TOTP MFA enforced for privileged roles and optional for players | System / Dev Team | Authentication Code; bcrypt Configuration; OIDC Integration; MFA E2E Test |
+| IA-2(1) | MFA to Privileged Accounts | I | TOTP MFA required for SUPER_ADMIN, ORG_ADMIN, and FACILITATOR accounts; users without MFA are forced into setup before protected access; MFA-enabled users must complete a TOTP or recovery-code challenge before login tokens are issued | System / Dev Team | MFA Enforcement Code; E2E MFA Enrollment Test; Security Dashboard Privileged MFA Metric |
+| IA-2(2) | MFA to Non-Privileged Accounts | PI | TOTP MFA is available for player accounts from Profile, but not mandated by the application; organizations requiring MFA for all accounts should enforce it through OIDC/SSO or operating policy | Sys Admin / ISSO | MFA Configuration; Operator Policy |
 | IA-2(6) | Access — Separate Device | I | TOTP uses separate authenticator app device for MFA-enabled accounts | System (Automated) | TOTP Implementation |
 | IA-3 | Device I&A | NA | No device-to-device communication requiring device authentication in scope | N/A | Tailoring Rationale |
 | IA-4 | Identifier Management | I | Unique email-based identifiers; no reuse (disabled accounts retain ID); OIDC subject identifiers mapped to internal accounts | Sys Admin | Account Provisioning SOP; User ID Schema |
-| IA-5 | Authenticator Management | I | Passwords: min 12 chars, complexity, bcrypt factor 12, 5-password history, common password blocklist; JWT secrets externalized; key rotation documented | System / Sys Admin | Password Policy Config; bcrypt Config; Secrets Management SOP |
-| IA-5(1) | Password-Based Authentication | I | Min length, complexity, bcrypt hashing, previous 5 prohibited, lockout after 5 failures; never plaintext or in URLs | System (Automated) | Password Policy; Hashing Code; Validation Code |
+| IA-5 | Authenticator Management | I | Passwords: min 12 chars with uppercase/lowercase/number/symbol and bcrypt factor 12; TOTP secrets encrypted with MFA_ENCRYPTION_KEY; recovery codes stored as bcrypt hashes; JWT secrets externalized; key rotation documented | System / Sys Admin | Password Policy Config; bcrypt Config; MFA Service; Secrets Management SOP |
+| IA-5(1) | Password-Based Authentication | I | Minimum length and complexity enforced; bcrypt hashing; lockout after 5 failures; passwords are never stored in plaintext or sent in URLs | System (Automated) | Password Policy; Hashing Code; Validation Code |
 | IA-6 | Authentication Feedback | I | Generic error "Invalid credentials" on login failure; no username/password distinguishing; TOTP failures are generic | Dev Team | Login Error Messages; Code Review |
 | IA-7 | Cryptographic Module Authentication | I | Node.js crypto module + bcrypt; FIPS 140-2 compliant when using appropriate build; TLS via Nginx with approved ciphers | Dev Team | Crypto Library Versions; TLS Configuration |
-| IA-8 | Non-Organizational User I&A | I | External users provisioned with time-limited accounts or federated OIDC; same auth requirements as org users | Sys Admin / System Owner | Guest Account SOP; OIDC Federation Config |
-| IA-11 | Re-Authentication | I | Re-auth after 30-minute inactivity; sensitive operations (password change, MFA config) require current password | System (Automated) | Session Timeout Config; Sensitive Op Re-Auth Code |
+| IA-8 | Non-Organizational User I&A | I | External users authenticate through local accounts or federated OIDC and typically receive PLAYER access; time-limited access should be managed through OIDC/SSO or operator review | Sys Admin / System Owner | Guest Account SOP; OIDC Federation Config |
+| IA-11 | Re-Authentication | I | Short-lived access tokens, refresh-token rotation, and MFA challenge for MFA-enabled logins; password changes and MFA changes require authenticated sessions and current password or current MFA code as applicable | System (Automated) | Token Config; MFA Routes; Sensitive Op Re-Auth Code |
 | IA-12 | Identity Proofing | I | Identity proofing via HR onboarding before account provisioning; OIDC users proofed by their organization's IdP | Sys Admin / HR | Account Provisioning SOP; HR Onboarding Records |
 
 ---
@@ -270,7 +270,7 @@ This matrix provides an at-a-glance reference for the implementation status of a
 | RA-2 | Security Categorization | I | FIPS 199 categorization: MODERATE; documented in FIPS199-CTT-001; AO approved | ISSO / System Owner | FIPS199-CTT-001 |
 | RA-3 | Risk Assessment | I | Risk assessment RA-CTT-001 documents threats, vulnerabilities, likelihood, impact, risk levels; reviewed quarterly | ISSO | RA-CTT-001 |
 | RA-3(1) | Supply Chain Risk Assessment | PI | npm audit + Dependabot for dependency scanning; formal SCRM documentation in development | Dev Team / ISSO | npm audit Reports; Dependabot Alerts; POA&M POAM-008 |
-| RA-5 | Vulnerability Monitoring and Scanning | I | Monthly vuln scans; container image scanning at build + monthly; npm audit in CI/CD; remediation timelines by severity | ISSO / Sys Admin | Scan Reports; Remediation Tracking; CI/CD Config |
+| RA-5 | Vulnerability Monitoring and Scanning | PI | npm audit and CodeQL are configured in GitHub workflows; operators should add container image scanning and recurring production vulnerability scans | ISSO / Sys Admin | CI/CD Config; Scan Reports; Remediation Tracking |
 | RA-5(2) | Update Vulnerabilities to Be Scanned | I | Scan signatures updated before each scan; CISA KEV catalog reviewed weekly | Sys Admin | Scan Configuration; KEV Review Records |
 | RA-7 | Risk Response | I | Risk response decisions documented; options (accept/mitigate/transfer/avoid) documented per risk | ISSO / System Owner | Risk Register; Risk Response Decisions |
 | RA-9 | Criticality Analysis | I | Critical functions, data, and components identified; informs control prioritization and recovery planning | System Owner / ISSO | Criticality Analysis Document |
@@ -290,7 +290,7 @@ This matrix provides an at-a-glance reference for the implementation status of a
 | SA-8 | Security Engineering Principles | I | Applied: defense in depth, least privilege, fail secure, economy of mechanism, complete mediation, open design | Dev Team | Design Documentation; Code Review Standards |
 | SA-9 | External System Services | I | External services evaluated pre-use; ISAs in place; providers must maintain commensurate controls | System Owner / Contracting | ISA Documents; Vendor Security Assessments |
 | SA-10 | Developer Configuration Management | I | Source code in Git; all changes require code review before merge; Docker builds automated; dependencies pinned | Dev Team | Git Repository; Code Review Records; CI/CD Config |
-| SA-11 | Developer Testing and Evaluation | I | SAST via ESLint security plugins; npm audit; developer security training; pre-release security review | Dev Team | SAST Reports; Audit Reports; Security Training Records |
+| SA-11 | Developer Testing and Evaluation | PI | TypeScript build, automated tests, npm audit, CodeQL, and manual pre-release review are used; dedicated SAST/DAST and formal developer security training are operator/project governance activities | Dev Team | CI Results; Audit Reports; Security Review Records |
 | SA-15 | Development Process, Standards, Tools | I | Documented coding standards (OWASP Top 10 mitigations); security user stories; security test cases | Dev Team | Coding Standards; Security Test Cases |
 | SA-17 | Developer Security Architecture | I | Security architecture (BD, DFD, threat model) reviewed with significant design changes | Dev Team / ISSO | Architecture Documents; Threat Model |
 
@@ -301,21 +301,21 @@ This matrix provides an at-a-glance reference for the implementation status of a
 | Control ID | Control Name | Status | Implementation Description | Responsible Party | Evidence Location |
 |---|---|---|---|---|---|
 | SC-1 | Policy and Procedures | I | SC policy in [ORGANIZATION] network security policy and SSP | ISSO / Net Admin | [ORGANIZATION] Network Security Policy; SSP |
-| SC-2 | Separation of System and User Functionality | I | Administrative functions separated; admin endpoints restricted to Administrator role; admin UI requires admin session | Dev Team | Role-Permission Matrix; API Routing |
+| SC-2 | Separation of System and User Functionality | I | Administrative functions separated; admin endpoints restricted to ORG_ADMIN/SUPER_ADMIN as appropriate; admin UI requires authenticated admin session | Dev Team | Role-Permission Matrix; API Routing |
 | SC-3 | Security Function Isolation | I | Security functions (auth, authz, audit, session mgmt) implemented as isolated middleware modules | Dev Team | Middleware Architecture; Code Structure |
 | SC-4 | Information in Shared Resources | I | Sensitive data cleared from shared resources on session termination; cache-control headers; Redis namespaces isolated per session | Dev Team | Session Cleanup Code; HTTP Response Headers |
 | SC-5 | DoS Protection | I | Rate limiting: auth endpoint 5/min/IP, API 100/min/user, registration 3/hr/IP; Nginx connection limits; alerts | Dev Team / Sys Admin | Rate Limit Configuration; Nginx Config; Alert Config |
 | SC-7 | Boundary Protection | I | Nginx reverse proxy accepts HTTPS 443 only; Docker network prevents external DB/cache access; firewall rules: 80/443 only | Sys Admin / Net Admin | Nginx Config; Docker Network Config; Firewall Rules |
 | SC-8 | Transmission C&I | I | TLS 1.2+ enforced at Nginx; HSTS with long max-age; HTTP → HTTPS redirect; internal Docker TLS where applicable | Sys Admin / Dev Team | Nginx TLS Config; HSTS Config |
 | SC-8(1) | Cryptographic Protection | I | Approved cipher suites: TLS_AES_256_GCM_SHA384, TLS_CHACHA20_POLY1305_SHA256 (TLS 1.3); weak ciphers disabled | Sys Admin | Nginx SSL Configuration; SSL Labs Report |
-| SC-10 | Network Disconnect | I | Sessions terminated after 30-minute inactivity; WebSocket keepalive/timeout mechanisms | System (Automated) | Session Timeout Config |
+| SC-10 | Network Disconnect | I | Short-lived access tokens and WebSocket keepalive/timeout mechanisms limit stale connections; logout clears browser cookies and revokes refresh token when present | System (Automated) | Token Config; Socket.io Config |
 | SC-12 | Cryptographic Key Management | I | TLS keys in restricted Nginx location; JWT secrets externalized to env vars/secrets manager; key rotation documented | Sys Admin / Dev Team | Key Management SOP; Secrets Configuration |
-| SC-13 | Cryptographic Protection | I | bcrypt (passwords), HMAC-SHA256/RSA-SHA256 (JWT), AES-256 (backup encryption), TLS 1.2+ (transport) | Dev Team | Crypto Library Config; TLS Configuration |
+| SC-13 | Cryptographic Protection | I | bcrypt (passwords and recovery-code hashes), HMAC-SHA256 JWT signing, AES-256-GCM for TOTP secret encryption, TLS 1.2+ transport, and operator-managed backup encryption | Dev Team / Sys Admin | Crypto Library Config; TLS Configuration; MFA Service |
 | SC-17 | PKI Certificates | I | TLS certs from approved CA; expiration monitored; renewal initiated 30+ days before expiration | Sys Admin | Certificate Inventory; Renewal Alerts |
 | SC-18 | Mobile Code | I | CSP via Helmet.js restricts JS to approved sources; inline scripts restricted; third-party library SRI hashes | Dev Team | Helmet.js Configuration; CSP Policy |
 | SC-20 | Secure Name/Address Resolution | I | DNS via [ORGANIZATION] authoritative DNS; DNSSEC implemented where supported | Sys Admin / Net Admin | DNS Configuration; DNSSEC Records |
 | SC-23 | Session Authenticity | I | Cryptographically random JWT tokens; httpOnly cookies; SameSite attribute; CSRF token validation | Dev Team | Session Config; Cookie Configuration; CSRF Implementation |
-| SC-28 | Protection at Rest | I | PostgreSQL volume encryption; backup AES-256 encryption; Redis persistence on encrypted volumes; secrets in secrets manager | Sys Admin / DBA | Encryption Configuration; Backup Encryption Config |
+| SC-28 | Protection at Rest | PI | TOTP secrets encrypted by the application; database, volume, Redis persistence, and backup encryption are deployment responsibilities documented for operators | Sys Admin / DBA | MFA Service; Encryption Configuration; Backup Configuration |
 | SC-39 | Process Isolation | I | Docker container isolation between all components; AppArmor/seccomp profiles; non-root users in containers | Dev Team / Sys Admin | Docker Security Config; Container Security Profile |
 
 ---

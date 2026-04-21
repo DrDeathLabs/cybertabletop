@@ -396,6 +396,15 @@ function New-SecureAlphanumeric {
     return $result.ToString()
 }
 
+function New-SecureBase64 {
+    param([int]$Bytes)
+    $rng = [System.Security.Cryptography.RNGCryptoServiceProvider]::new()
+    $buffer = New-Object byte[] $Bytes
+    $rng.GetBytes($buffer)
+    $rng.Dispose()
+    return [Convert]::ToBase64String($buffer)
+}
+
 # ---------------------------------------------------------------------------
 # Inject secrets into .env
 # ---------------------------------------------------------------------------
@@ -407,6 +416,7 @@ function Set-EnvSecrets {
     $JwtSecret        = New-SecureHex 32          # 64 hex chars
     $JwtRefreshSecret = New-SecureHex 32          # 64 hex chars
     $SessionSecret    = New-SecureHex 16          # 32 hex chars
+    $MfaEncryptionKey = New-SecureBase64 32       # 32-byte base64 key
     $PostgresPassword = New-SecureAlphanumeric 32
     $RedisPassword    = New-SecureAlphanumeric 32
 
@@ -427,6 +437,7 @@ function Set-EnvSecrets {
     Update-EnvVar -File $EnvFile -Key 'JWT_SECRET'          -Value $JwtSecret
     Update-EnvVar -File $EnvFile -Key 'JWT_REFRESH_SECRET'  -Value $JwtRefreshSecret
     Update-EnvVar -File $EnvFile -Key 'SESSION_SECRET'      -Value $SessionSecret
+    Update-EnvVar -File $EnvFile -Key 'MFA_ENCRYPTION_KEY'  -Value $MfaEncryptionKey
     Update-EnvVar -File $EnvFile -Key 'POSTGRES_PASSWORD'   -Value $PostgresPassword
     Update-EnvVar -File $EnvFile -Key 'REDIS_PASSWORD'      -Value $RedisPassword
 
@@ -434,6 +445,7 @@ function Set-EnvSecrets {
     Write-Info "  JWT_SECRET:          $($JwtSecret.Substring(0,16))… (truncated)"
     Write-Info "  JWT_REFRESH_SECRET:  $($JwtRefreshSecret.Substring(0,16))… (truncated)"
     Write-Info "  SESSION_SECRET:      $($SessionSecret.Substring(0,8))… (truncated)"
+    Write-Info "  MFA_ENCRYPTION_KEY:  $($MfaEncryptionKey.Substring(0,8))… (truncated)"
     Write-Info "  POSTGRES_PASSWORD:   $($PostgresPassword.Substring(0,8))… (truncated)"
     Write-Info "  REDIS_PASSWORD:      $($RedisPassword.Substring(0,8))… (truncated)"
 }
@@ -478,21 +490,19 @@ function Write-SuccessMessage {
     Write-Host "       docker compose up -d" -ForegroundColor Cyan
     Write-Host ""
     Write-Host "  3. " -NoNewline -ForegroundColor Yellow
-    Write-Host "Run database migrations:" -ForegroundColor White
-    Write-Host "       docker compose exec backend npm run db:migrate" -ForegroundColor Cyan
-    Write-Host ""
-    Write-Host "  4. " -NoNewline -ForegroundColor Yellow
     Write-Host "Seed initial data:" -ForegroundColor White
     Write-Host "       docker compose exec backend npm run db:seed" -ForegroundColor Cyan
+    Write-Host "       (Database migrations run automatically when the backend starts.)" -ForegroundColor DarkGray
     Write-Host ""
-    Write-Host "  5. " -NoNewline -ForegroundColor Yellow
+    Write-Host "  4. " -NoNewline -ForegroundColor Yellow
     Write-Host "Open the application:" -ForegroundColor White
     Write-Host "       https://localhost" -ForegroundColor Cyan
     Write-Host "       (Accept the self-signed certificate warning in your browser)" -ForegroundColor Yellow
     Write-Host ""
-    Write-Host "  6. " -NoNewline -ForegroundColor Yellow
+    Write-Host "  5. " -NoNewline -ForegroundColor Yellow
     Write-Host "Register your admin account:" -ForegroundColor White
     Write-Host "       The first account registered is automatically granted SUPER_ADMIN role." -ForegroundColor White
+    Write-Host "       Privileged users must complete TOTP MFA setup before using the app." -ForegroundColor White
     Write-Host ""
     Write-Host "============================================================" -ForegroundColor Green
     Write-Host ""

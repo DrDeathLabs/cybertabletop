@@ -177,7 +177,7 @@ Access to personal information within CTT is restricted by role:
 - **Administrators** can view all user account data (email, display name, role, status) and full audit logs. Access is limited to personnel with a demonstrated need for this access and is logged.
 - **Facilitators** can view the display names and exercise performance data of participants in their assigned sessions. Facilitators cannot view the email addresses or account management data of participants.
 - **Participants** can view only their own account data and their own exercise performance records.
-- **Observers** can view display names of active session participants during the exercise. Observers cannot view individual performance data.
+- **Players** can view exercise content for sessions they join. CyberTabletop does not currently implement a separate Observer role.
 
 ---
 
@@ -239,17 +239,17 @@ All non-routine disclosures are reviewed and approved by the organization's Gene
 
 CTT provides notice to users about the collection and use of their personal information through the following mechanisms:
 
-**System Registration Notice:** At account creation, users are presented with a privacy notice that describes: (a) the data elements collected; (b) the purposes for collection; (c) how the data is used; (d) retention periods; and (e) how to access, correct, or request deletion of their data. Users must affirmatively acknowledge the notice before completing registration.
+**System Registration Notice:** The registration flow collects display name, email address, password, and invite code. Organizations should provide their privacy notice alongside the deployment, identity-provider flow, or reverse-proxy landing page, including data elements collected, purposes for collection, retention periods, and how users can request correction or deletion.
 
-**System Use Notification Banner:** The login page displays a system use notification that advises users that their activity on the system is subject to monitoring and that they have no expectation of privacy in their system usage.
+**System Use Notification Banner:** CyberTabletop does not currently include a configurable pre-login use banner. Organizations requiring explicit monitoring/no-expectation-of-privacy notice should add that notice at the identity provider, public reverse proxy, or surrounding access portal.
 
-**Privacy Policy:** A full privacy policy is accessible from the login page and account settings pages. The privacy policy describes data handling practices in plain language.
+**Privacy Policy:** A deployment-specific privacy policy should be provided by the operating organization. CyberTabletop's bundled documentation describes the application data flows and can be used as source material for that policy.
 
 ### 7.2 Consent
 
 CTT collects personal information with the informed consent of users, expressed through:
 
-- Completion of account registration after reviewing and acknowledging the privacy notice.
+- Completion of account registration in an environment where the operating organization has provided the required privacy and acceptable-use notice.
 - Acceptance of the system's terms of use and privacy policy.
 
 For users enrolled in exercises by a facilitator or administrator (without self-registration), the organization is responsible for ensuring those users have been informed of data collection practices through organizational notices, training acknowledgments, or similar mechanisms.
@@ -293,10 +293,10 @@ For users who are U.S. citizens or lawful permanent residents and whose records 
 Access to personal information in CTT is protected by the technical controls documented in the SSP, including:
 
 - Role-based access control ensuring users can access only their own data and that Administrators, Facilitators, and other roles have access only to the minimum data necessary for their functions.
-- Authentication requirements (password or SSO) for all access to CTT application functionality.
+- Authentication requirements (password or SSO) for all access to CTT application functionality, with TOTP MFA enforced for privileged local roles.
 - TLS 1.2+ encryption for all data in transit.
-- AES-256 encryption for all data at rest (database encryption at rest).
-- Session management controls including automatic session timeout and server-side session invalidation.
+- Deployment-managed encryption for database and volume data at rest; TOTP MFA secrets are encrypted by the application with `MFA_ENCRYPTION_KEY`.
+- Session management controls including short-lived access tokens, server-side hashed refresh tokens, and refresh-token rotation.
 - Audit logging of all access to personal information by administrators and privileged users.
 
 ### 9.2 Data Minimization in Technical Implementation
@@ -307,7 +307,7 @@ The CTT application is implemented with the following data minimization design f
 - **No PII in log messages:** Audit log messages use account IDs, not email addresses. IP addresses in logs are treated as potentially sensitive and are retained only as long as required.
 - **No PII in error messages:** Application error messages do not expose user data.
 - **No PII in AI API calls:** The scenario generation feature is implemented to prevent user PII from being included in prompts sent to the Claude API.
-- **JWT contents minimized:** Access tokens contain only the user's account ID and role, not personal data.
+- **JWT contents limited:** Access tokens contain only authentication/session claims needed by the application, such as account ID, email, display name, role, org ID, and MFA state. Tokens are stored in httpOnly cookies.
 
 ### 9.3 Privacy Incidents
 
@@ -364,9 +364,9 @@ Privacy risks are assessed using the NIST Privacy Framework and OMB Circular A-1
 **Residual Risk:** Low
 **Mitigations:**
 - Role-based access control limiting data access to authorized roles
-- Authentication requirements and MFA for administrative accounts
+- Authentication requirements and TOTP MFA for privileged accounts
 - TLS encryption for all data in transit
-- AES-256 database encryption at rest
+- Deployment-managed database encryption at rest, with application-level encryption for TOTP MFA secrets
 - Audit logging of all administrative data access
 - Regular vulnerability scanning and patching
 
@@ -378,10 +378,10 @@ Privacy risks are assessed using the NIST Privacy Framework and OMB Circular A-1
 **Impact:** Low (no highly sensitive PII in the database)
 **Residual Risk:** Low
 **Mitigations:**
-- Parameterized queries via Sequelize ORM preventing SQL injection
-- Input validation on all API endpoints via Joi library
+- Parameterized queries via Prisma ORM preventing SQL injection
+- Input validation on API endpoints via Zod schemas and route-level guards
 - Regular vulnerability scanning and penetration testing (planned)
-- WAF configuration via Nginx rate limiting and Content Security Policy
+- Edge protection through Nginx rate limiting and Content Security Policy; deploy a dedicated WAF at the public edge if required by policy
 - Principle of least privilege for database user permissions
 
 ---

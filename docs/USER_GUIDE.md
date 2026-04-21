@@ -36,8 +36,11 @@ Steps:
 2. Click Register.
 3. Enter display name, email, password, and invite code.
 4. Sign in with the new account.
+5. If your account is `SUPER_ADMIN`, `ORG_ADMIN`, or `FACILITATOR`, complete the TOTP MFA setup before continuing.
 
 Passwords must meet the local password policy. If SSO/OIDC is configured, users may also sign in through the identity provider.
+
+The first non-system account registered in a new deployment becomes `SUPER_ADMIN`.
 
 ## Admin Panel
 
@@ -58,7 +61,7 @@ The security dashboard reports operational checks such as:
 
 - failed logins,
 - locked accounts,
-- MFA adoption status,
+- privileged MFA coverage,
 - active users,
 - PostgreSQL probe,
 - Redis probe,
@@ -73,9 +76,23 @@ The audit log records significant actions. Use it to review authentication event
 
 ### Users
 
-Admins can review users and roles.
+Admins can review users and roles, change roles within their authority, and reset
+MFA for another user when a verified lockout or authenticator replacement is
+needed. Admins cannot reset MFA for themselves.
 
 The built-in `system@cybertabletop.internal` user is an internal service identity used to own seeded/built-in scenario records. It is not intended for login.
+
+## MFA
+
+CyberTabletop uses time-based one-time passwords (TOTP) with authenticator apps
+such as Microsoft Authenticator, Google Authenticator, 1Password, Bitwarden,
+Authy, or Duo Mobile.
+
+- `SUPER_ADMIN`, `ORG_ADMIN`, and `FACILITATOR` users must enroll MFA.
+- `PLAYER` users may enable MFA from Profile.
+- MFA recovery codes are shown once. Store them somewhere safe.
+- If a user loses access to their authenticator and recovery codes, an admin can
+  reset MFA from the Users tab after verifying the user's identity.
 
 ### Organization Config
 
@@ -218,7 +235,8 @@ After an exercise:
 ## Security Practices for Operators
 
 - Keep `REQUIRE_INVITE=true` for public deployments.
-- Use SSO/OIDC with upstream MFA where possible.
+- Use the built-in TOTP MFA for privileged local accounts.
+- Use SSO/OIDC with upstream MFA where possible for stronger account lifecycle management.
 - Limit admin roles.
 - Review audit logs periodically.
 - Back up PostgreSQL.
@@ -242,4 +260,3 @@ Yes. The Business Source License Additional Use Grant permits internal organizat
 ### Can someone sell CyberTabletop as SaaS?
 
 No. Hosted service, managed service, white-label, resale, commercial training delivery, and bundling into commercial tools require separate permission.
-

@@ -36,6 +36,7 @@ else
   JWT_SECRET="$(rand_hex 32)"
   JWT_REFRESH_SECRET="$(rand_hex 32)"
   SESSION_SECRET="$(rand_hex 24)"
+  MFA_ENCRYPTION_KEY="$(openssl rand -base64 32)"
   INVITE_CODE="$(rand_alnum 48)"
 
   sed -i.bak \
@@ -44,6 +45,7 @@ else
     -e "s/CHANGE_ME_LONG_RANDOM_SECRET_MIN_64_CHARS/${JWT_SECRET}/g" \
     -e "s/CHANGE_ME_DIFFERENT_LONG_RANDOM_SECRET_MIN_64_CHARS/${JWT_REFRESH_SECRET}/g" \
     -e "s/CHANGE_ME_SESSION_SECRET/${SESSION_SECRET}/g" \
+    -e "s|CHANGE_ME_BASE64_32_BYTE_KEY|${MFA_ENCRYPTION_KEY}|g" \
     -e "s/CHANGE_ME_LONG_RANDOM_INVITE_CODE/${INVITE_CODE}/g" \
     "${ENV_FILE}"
   rm -f "${ENV_FILE}.bak"

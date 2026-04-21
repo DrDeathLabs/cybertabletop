@@ -25,6 +25,7 @@ Because the license restricts some production/commercial uses before the Change 
 - Real-time scoring, leaderboard, scripted feedback, and debrief views
 - NIST CSF-oriented debrief and gap-analysis outputs
 - Local authentication plus optional OIDC/SSO
+- Enforced TOTP MFA for privileged roles, with optional MFA for players
 - AI-assisted content paths using scripted responses, Anthropic, or Ollama
 - Admin security dashboard for operational posture checks
 - Docker Compose deployment with PostgreSQL, Redis, frontend, backend, and Nginx
@@ -39,11 +40,17 @@ Current hardening includes:
 - short-lived JWT access tokens
 - server-side hashed refresh tokens with rotation
 - invite-gated registration support
+- enforced TOTP MFA for `SUPER_ADMIN`, `ORG_ADMIN`, and `FACILITATOR`
+- AES-256-GCM encryption for stored TOTP secrets
+- bcrypt-hashed MFA recovery codes
 - role-based authorization
 - route-level input validation
 - rate limiting
 - audit logging
-- Nginx security headers and CSP
+- Nginx security headers and CSP. The bundled localhost config intentionally
+  does not set `X-Frame-Options` or `frame-ancestors` so embedded local preview
+  browsers can load the app; standalone public deployments should add
+  clickjacking protection at their public edge.
 - loopback-only Docker port bindings by default
 - no direct host exposure for PostgreSQL or Redis
 - SSRF protections for organization website fetches
@@ -80,6 +87,7 @@ Important production values:
 - `JWT_SECRET`
 - `JWT_REFRESH_SECRET`
 - `SESSION_SECRET`
+- `MFA_ENCRYPTION_KEY`
 - `POSTGRES_PASSWORD`
 - `REDIS_PASSWORD`
 - `INVITE_CODE`
@@ -108,10 +116,12 @@ By default, Nginx binds only to localhost:
 
 To expose the app behind a trusted reverse proxy or edge load balancer, configure `HTTP_BIND`, `HTTPS_BIND`, `FRONTEND_URL`, `CORS_ORIGINS`, and TLS settings deliberately.
 
-### 3. Run migrations and seed built-in scenarios
+### 3. Seed built-in scenarios
+
+The backend container runs Prisma migrations automatically before starting.
+After the stack is healthy, seed the built-in scenarios:
 
 ```bash
-docker compose -p cybertabletop -f docker-compose.pull.yml exec backend npm run db:migrate
 docker compose -p cybertabletop -f docker-compose.pull.yml exec backend npm run db:seed
 ```
 
@@ -122,6 +132,10 @@ If you started the source-build compose file instead, omit `-f docker-compose.pu
 Open [https://localhost](https://localhost) and accept the local self-signed certificate warning if you are using development certificates.
 
 Registration is invite-gated by default when `REQUIRE_INVITE=true`. Use your configured `INVITE_CODE` to create accounts.
+
+The first non-system account becomes `SUPER_ADMIN`. `SUPER_ADMIN`, `ORG_ADMIN`,
+and `FACILITATOR` users are required to enroll TOTP MFA before using protected
+application features.
 
 ## User Roles
 

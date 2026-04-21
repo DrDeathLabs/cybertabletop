@@ -12,7 +12,9 @@ $SslDir = Join-Path $Root 'nginx\ssl'
 function New-RandomHex {
     param([int]$Bytes = 32)
     $buffer = New-Object byte[] $Bytes
-    [System.Security.Cryptography.RandomNumberGenerator]::Fill($buffer)
+    $rng = [System.Security.Cryptography.RNGCryptoServiceProvider]::new()
+    $rng.GetBytes($buffer)
+    $rng.Dispose()
     -join ($buffer | ForEach-Object { $_.ToString('x2') })
 }
 
@@ -20,12 +22,23 @@ function New-RandomAlnum {
     param([int]$Length = 40)
     $chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
     $bytes = New-Object byte[] $Length
-    [System.Security.Cryptography.RandomNumberGenerator]::Fill($bytes)
+    $rng = [System.Security.Cryptography.RNGCryptoServiceProvider]::new()
+    $rng.GetBytes($bytes)
+    $rng.Dispose()
     $result = New-Object System.Text.StringBuilder
     foreach ($byte in $bytes) {
         [void]$result.Append($chars[$byte % $chars.Length])
     }
     $result.ToString()
+}
+
+function New-RandomBase64 {
+    param([int]$Bytes = 32)
+    $rng = [System.Security.Cryptography.RNGCryptoServiceProvider]::new()
+    $buffer = New-Object byte[] $Bytes
+    $rng.GetBytes($buffer)
+    $rng.Dispose()
+    [Convert]::ToBase64String($buffer)
 }
 
 function Require-Command {
@@ -48,6 +61,7 @@ if (Test-Path $EnvFile) {
     $jwtSecret = New-RandomHex 32
     $jwtRefreshSecret = New-RandomHex 32
     $sessionSecret = New-RandomHex 24
+    $mfaEncryptionKey = New-RandomBase64 32
     $inviteCode = New-RandomAlnum 48
 
     $content = Get-Content $EnvFile -Raw
@@ -56,6 +70,7 @@ if (Test-Path $EnvFile) {
     $content = $content.Replace('CHANGE_ME_LONG_RANDOM_SECRET_MIN_64_CHARS', $jwtSecret)
     $content = $content.Replace('CHANGE_ME_DIFFERENT_LONG_RANDOM_SECRET_MIN_64_CHARS', $jwtRefreshSecret)
     $content = $content.Replace('CHANGE_ME_SESSION_SECRET', $sessionSecret)
+    $content = $content.Replace('CHANGE_ME_BASE64_32_BYTE_KEY', $mfaEncryptionKey)
     $content = $content.Replace('CHANGE_ME_LONG_RANDOM_INVITE_CODE', $inviteCode)
     Set-Content -Path $EnvFile -Value $content -NoNewline
 
@@ -86,4 +101,3 @@ Write-Host ""
 Write-Host "Bootstrap complete."
 Write-Host "Start with prebuilt images:"
 Write-Host "  docker compose -p cybertabletop -f docker-compose.pull.yml up -d"
-

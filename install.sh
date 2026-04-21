@@ -356,6 +356,7 @@ generate_secrets() {
     JWT_SECRET=$(gen_hex64)
     JWT_REFRESH_SECRET=$(gen_hex64)
     SESSION_SECRET=$(gen_hex32)
+    MFA_ENCRYPTION_KEY=$(openssl rand -base64 32)
     POSTGRES_PASSWORD=$(gen_alnum32)
     REDIS_PASSWORD=$(gen_alnum32)
 
@@ -378,6 +379,7 @@ generate_secrets() {
     replace_env_var "JWT_SECRET"          "${JWT_SECRET}"
     replace_env_var "JWT_REFRESH_SECRET"  "${JWT_REFRESH_SECRET}"
     replace_env_var "SESSION_SECRET"      "${SESSION_SECRET}"
+    replace_env_var "MFA_ENCRYPTION_KEY"  "${MFA_ENCRYPTION_KEY}"
     replace_env_var "POSTGRES_PASSWORD"   "${POSTGRES_PASSWORD}"
     replace_env_var "REDIS_PASSWORD"      "${REDIS_PASSWORD}"
 
@@ -388,6 +390,7 @@ generate_secrets() {
     info "  JWT_SECRET:          ${JWT_SECRET:0:16}… (truncated)"
     info "  JWT_REFRESH_SECRET:  ${JWT_REFRESH_SECRET:0:16}… (truncated)"
     info "  SESSION_SECRET:      ${SESSION_SECRET:0:8}… (truncated)"
+    info "  MFA_ENCRYPTION_KEY:  ${MFA_ENCRYPTION_KEY:0:8}… (truncated)"
     info "  POSTGRES_PASSWORD:   ${POSTGRES_PASSWORD:0:8}… (truncated)"
     info "  REDIS_PASSWORD:      ${REDIS_PASSWORD:0:8}… (truncated)"
 }
@@ -422,18 +425,17 @@ print_success() {
     echo -e "  ${YELLOW}2.${RESET} Start all services:"
     echo -e "       ${CYAN}docker compose up -d${RESET}"
     echo ""
-    echo -e "  ${YELLOW}3.${RESET} Run database migrations:"
-    echo -e "       ${CYAN}docker compose exec backend npm run db:migrate${RESET}"
-    echo ""
-    echo -e "  ${YELLOW}4.${RESET} Seed initial data:"
+    echo -e "  ${YELLOW}3.${RESET} Seed initial data:"
     echo -e "       ${CYAN}docker compose exec backend npm run db:seed${RESET}"
+    echo -e "       ${CYAN}(Database migrations run automatically when the backend starts.)${RESET}"
     echo ""
-    echo -e "  ${YELLOW}5.${RESET} Open the application:"
+    echo -e "  ${YELLOW}4.${RESET} Open the application:"
     echo -e "       ${CYAN}https://localhost${RESET}"
     echo -e "       ${YELLOW}(Accept the self-signed certificate warning in your browser)${RESET}"
     echo ""
-    echo -e "  ${YELLOW}6.${RESET} Register your admin account:"
+    echo -e "  ${YELLOW}5.${RESET} Register your admin account:"
     echo -e "       The ${BOLD}first account registered${RESET} is automatically granted ${BOLD}SUPER_ADMIN${RESET} role."
+    echo -e "       Privileged users must complete TOTP MFA setup before using the app."
     echo ""
     echo -e "${GREEN}${BOLD}============================================================${RESET}"
     echo ""

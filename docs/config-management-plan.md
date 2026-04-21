@@ -31,14 +31,14 @@ This Configuration Management Plan (CMP) establishes policies and procedures for
 - TLS 1.2/1.3 only (TLS 1.0, 1.1 disabled)
 - Strong cipher suite (ECDHE + AES-GCM + SHA384)
 - HSTS with 1-year max-age + preload
-- X-Frame-Options: DENY
-- Content-Security-Policy: restrictive (no unsafe-inline scripts)
+- Content-Security-Policy: restrictive baseline with `object-src 'none'`, `base-uri 'self'`, and same-origin defaults
+- The bundled localhost configuration intentionally omits `X-Frame-Options` and `frame-ancestors` so embedded local preview browsers can load the app. Standalone public deployments should add clickjacking protection at the public edge, for example `Content-Security-Policy: frame-ancestors 'none'`.
 - Rate limiting: 60 req/min general, 10 req/min auth endpoints
 
 **Backend (Express):**
 - Helmet.js security headers enabled
 - CORS: allowlist only (configured origins)
-- Cookie flags: httpOnly, Secure, SameSite=Lax
+- Cookie flags: httpOnly, Secure in production, SameSite=Strict
 - Input validation: Zod schema on all endpoints
 - Rate limiting: express-rate-limit with separate zones
 

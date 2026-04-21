@@ -124,7 +124,7 @@ Vulnerabilities were identified through:
 
 | ID | Vulnerability | Component | Severity |
 |---|---|---|---|
-| V-01 | MFA not enforced for all user roles | Authentication | Medium |
+| V-01 | Player MFA is optional by default | Authentication | Low |
 | V-02 | No Web Application Firewall (WAF) | Network | Medium |
 | V-03 | Penetration testing not yet completed | Testing | Medium |
 | V-04 | Previous logon notification not implemented | Authentication | Low |
@@ -153,10 +153,10 @@ The following risk register documents all identified risks, their analysis, curr
 | **Likelihood** | High (4) — credential stuffing attacks are extremely common against web applications |
 | **Impact** | High (4) — successful attack leads to unauthorized access to user accounts and exercise data |
 | **Inherent Risk Level** | Critical |
-| **Current Controls** | Account lockout after 5 consecutive failures (AC-7); rate limiting on login endpoint (5 attempts/min/IP) (SC-5); bcrypt factor 12 slows offline attacks; failed login alerting (IR-4) |
+| **Current Controls** | Account lockout after 5 consecutive failures (AC-7); rate limiting on login and MFA endpoints (SC-5); bcrypt factor 12 slows offline attacks; TOTP MFA enforced for SUPER_ADMIN, ORG_ADMIN, and FACILITATOR; failed login alerting (IR-4) |
 | **Residual Risk Level** | Moderate |
-| **Recommended Mitigation** | Enforce MFA for all accounts; implement CAPTCHA for high-failure-rate IPs; integrate with threat intelligence feeds for known malicious IPs |
-| **POA&M Reference** | POAM-001 (MFA enforcement) |
+| **Recommended Mitigation** | Consider MFA for all player accounts through OIDC/SSO or local operating policy; implement CAPTCHA for high-failure-rate IPs; integrate with threat intelligence feeds for known malicious IPs |
+| **POA&M Reference** | POAM-001 closed for privileged MFA; optional player MFA remains operator policy |
 
 ---
 
@@ -192,24 +192,24 @@ The following risk register documents all identified risks, their analysis, curr
 |---|---|
 | **Threat** | Cross-Site Scripting (XSS) attack via malicious scenario content or user input injected into exercise UI |
 | **Vulnerability** | The platform renders user-supplied scenario content and exercise responses in the browser |
-| **Likelihood** | Low (2) — DOMPurify sanitization on frontend provides strong XSS protection; CSP restricts script execution |
+| **Likelihood** | Low (2) — React output encoding, CSP, server-side validation, and httpOnly cookies reduce XSS likelihood and impact |
 | **Impact** | Moderate (3) — successful XSS could steal session tokens, redirect users, or modify exercise content |
 | **Inherent Risk Level** | Moderate |
-| **Current Controls** | DOMPurify XSS sanitization on frontend (SI-10); Content Security Policy via Helmet.js (SC-18); httpOnly cookies prevent token theft via JS; Zod server-side input validation |
+| **Current Controls** | React output encoding; Content Security Policy via Helmet.js/Nginx (SC-18); httpOnly cookies prevent token theft via JS; Zod server-side input validation |
 | **Residual Risk Level** | Very Low |
-| **Recommended Mitigation** | Maintain DOMPurify updates; conduct periodic XSS-focused testing; refine CSP directives to remove unsafe-inline where possible |
+| **Recommended Mitigation** | Conduct periodic XSS-focused testing; add sanitization for any future rich-text/HTML rendering paths; refine CSP directives to remove unsafe-inline where possible |
 | **POA&M Reference** | None (risk accepted at Very Low) |
 
 ---
 
 | **Risk ID** | RA-005 |
 |---|---|
-| **Threat** | Unauthorized privilege escalation — a Participant or Observer role user gains Facilitator or Administrator access |
+| **Threat** | Unauthorized privilege escalation — a PLAYER role user gains FACILITATOR, ORG_ADMIN, or SUPER_ADMIN access |
 | **Vulnerability** | If RBAC enforcement has flaws or can be bypassed, lower-privileged users could access higher-privileged functions |
 | **Likelihood** | Low (2) — RBAC enforced server-side; client-side manipulation cannot bypass server validation; extensive access control testing performed |
 | **Impact** | High (4) — unauthorized admin access could compromise all user accounts, system configuration, and audit logs |
 | **Inherent Risk Level** | Moderate |
-| **current Controls** | Server-side RBAC enforcement via Express middleware (AC-3, AC-6); HTTP 403 with audit log for unauthorized attempts (AC-6(10)); JWT role claims validated on every request |
+| **Current Controls** | Server-side RBAC enforcement via Express middleware (AC-3, AC-6); HTTP 403 responses for unauthorized attempts; JWT role claims and current user record validated for protected requests |
 | **Residual Risk Level** | Very Low |
 | **Recommended Mitigation** | Annual penetration testing with specific RBAC bypass test cases; automated authorization testing in CI/CD; log monitoring for 403 pattern analysis |
 | **POA&M Reference** | POAM-002 (penetration testing scope) |
@@ -223,7 +223,7 @@ The following risk register documents all identified risks, their analysis, curr
 | **Likelihood** | Low (2) — TLS enforced for all connections; httpOnly cookies prevent JS access; HSTS prevents downgrade |
 | **Impact** | Moderate (3) — stolen session provides access as that user for remainder of session; impact bounded by user's role |
 | **Inherent Risk Level** | Low |
-| **Current Controls** | TLS 1.2+ enforced at Nginx (SC-8); httpOnly + Secure + SameSite cookie attributes (SC-23); HSTS with long max-age (SC-8); 30-minute session timeout (AC-12) |
+| **Current Controls** | TLS 1.2+ enforced at Nginx (SC-8); httpOnly + Secure + SameSite cookie attributes (SC-23); HSTS with long max-age (SC-8); short-lived access tokens and server-side hashed refresh-token rotation/revocation (AC-12) |
 | **Residual Risk Level** | Very Low |
 | **Recommended Mitigation** | Monitor for concurrent session anomalies; implement session binding to additional contextual factors; maintain TLS configuration currency |
 | **POA&M Reference** | None (risk accepted at Very Low) |
@@ -251,7 +251,7 @@ The following risk register documents all identified risks, their analysis, curr
 | **Likelihood** | Low (2) — background checks required; least privilege implemented; access reviews conducted; small privileged user population |
 | **Impact** | High (4) — privileged insider could access all user accounts, export exercise data, modify configurations, or tamper with audit logs |
 | **Inherent Risk Level** | Moderate |
-| **Current Controls** | Background checks (PS-3); least privilege (AC-6); separation of duties (AC-5); audit logging of all privileged actions (AU-9, AC-6(9)); periodic access reviews (AC-2); audit log append-only (AU-9) |
+| **Current Controls** | Background checks and periodic access reviews are operator responsibilities; the application enforces least privilege (AC-6), separation of duties through RBAC (AC-5), and audit logging of privileged events (AU-9, AC-6(9)); application code does not expose audit update/delete workflows |
 | **Residual Risk Level** | Low |
 | **Recommended Mitigation** | Implement user behavior analytics (UBA) alerting for anomalous data access patterns; enforce dual control for critical administrative operations; conduct quarterly access reviews |
 | **POA&M Reference** | None (residual risk accepted at Low) |
@@ -279,7 +279,7 @@ The following risk register documents all identified risks, their analysis, curr
 | **Likelihood** | Low (2) — administrator accounts are small in number; MFA required; access from VPN required |
 | **Impact** | Very High (5) — compromised admin account enables full system access, account manipulation, audit log access, and potential data destruction |
 | **Inherent Risk Level** | Moderate |
-| **Current Controls** | MFA required for Administrator accounts (IA-2(1)); VPN + MFA for remote admin access (AC-17); account lockout (AC-7); privileged action audit logging (AC-6(9)); named admin accounts (no shared credentials) |
+| **Current Controls** | TOTP MFA required for SUPER_ADMIN, ORG_ADMIN, and FACILITATOR accounts (IA-2(1)); VPN + MFA for remote infrastructure access (AC-17); account lockout (AC-7); privileged action audit logging (AC-6(9)); named admin accounts (no shared credentials) |
 | **Residual Risk Level** | Low |
 | **Recommended Mitigation** | Implement privileged access workstations (PAWs) for admin functions; consider just-in-time (JIT) privileged access; conduct phishing simulation training targeting admins; implement admin session monitoring |
 | **POA&M Reference** | None (residual risk accepted at Low) |
@@ -290,10 +290,10 @@ The following risk register documents all identified risks, their analysis, curr
 |---|---|
 | **Threat** | Data breach — unauthorized exfiltration of user PII (email addresses, display names) and exercise data |
 | **Vulnerability** | User PII and exercise data stored in PostgreSQL; breach could occur via application compromise, database exposure, or backup theft |
-| **Likelihood** | Low (2) — database not externally exposed; backups encrypted; application input validation reduces SQLi risk |
+| **Likelihood** | Low (2) — database not externally exposed; application input validation reduces SQLi risk; backup encryption depends on operator configuration |
 | **Impact** | High (4) — PII exposure affecting security professionals could enable targeted attacks; exercise data could reveal organizational IR gaps; regulatory notification requirements |
 | **Inherent Risk Level** | Moderate |
-| **Current Controls** | Database not externally accessible; TLS encryption in transit (SC-8); encryption at rest (SC-28); bcrypt hashed passwords; Prisma ORM prevents SQLi; backup encryption (CP-9) |
+| **Current Controls** | Database not externally accessible; TLS encryption in transit (SC-8); application-level encryption for TOTP MFA secrets; bcrypt hashed passwords; Prisma ORM prevents SQLi; backup encryption is operator-controlled (CP-9) |
 | **Residual Risk Level** | Low |
 | **Recommended Mitigation** | Implement column-level encryption for email addresses; establish data breach notification procedures; minimize PII collection; consider pseudonymization of user identifiers in exercise records |
 | **POA&M Reference** | None (residual risk accepted at Low) |
@@ -359,11 +359,11 @@ The following risk register documents all identified risks, their analysis, curr
 | **Risk ID** | RA-016 |
 |---|---|
 | **Threat** | Audit log tampering — authorized user with database access modifies audit records to conceal malicious activity |
-| **Vulnerability** | Despite append-only design, a sufficiently privileged database user could potentially modify audit records at the database level |
-| **Likelihood** | Very Low (1) — DBA access controlled and logged; append-only enforced at application level; DBA actions generate their own audit trail |
+| **Vulnerability** | A sufficiently privileged database user could potentially modify audit records at the database level unless the operator forwards logs to tamper-resistant external storage |
+| **Likelihood** | Very Low (1) — audit modification is not exposed through the application; DBA access should be controlled and logged by the operator |
 | **Impact** | High (4) — tampered audit logs undermine non-repudiation, forensic capability, and compliance |
 | **Inherent Risk Level** | Low |
-| **Current Controls** | Append-only audit log schema (AU-9); DBA access controlled and documented; database activity monitoring; application service account INSERT-only on audit table; audit log backup to separate storage |
+| **Current Controls** | Application-managed audit records (AU-9); no application workflow to edit or delete audit entries; DBA access should be controlled and documented; operators should forward audit logs to separate storage or SIEM for tamper resistance |
 | **Residual Risk Level** | Very Low |
 | **Recommended Mitigation** | Implement write-once audit log storage or SIEM forwarding for real-time audit log duplication; cryptographic audit log signing to detect modification; separate DBA role from ISSO role |
 | **POA&M Reference** | POAM-010 (SIEM integration) |
@@ -377,7 +377,7 @@ The following risk register documents all identified risks, their analysis, curr
 | **Likelihood** | Moderate (3) — infrastructure failures are common; average MTTR for cloud instances typically 1-4 hours |
 | **Impact** | Low (2) — availability is LOW impact per FIPS 199; exercises can be rescheduled; no safety-critical functions affected |
 | **Inherent Risk Level** | Low |
-| **Current Controls** | Daily backups (CP-9); documented recovery procedures (CP-10); containerized architecture enables rapid redeployment; RTO 4 hours (CP-2) |
+| **Current Controls** | PostgreSQL backup and restore scripts provided (CP-9/CP-10); documented recovery procedures; containerized architecture enables rapid redeployment; operator must schedule backups and complete restore drills |
 | **Residual Risk Level** | Very Low |
 | **Recommended Mitigation** | Document and test alternate site redeployment procedures; consider container orchestration (Kubernetes) for improved availability; conduct quarterly backup restoration tests |
 | **POA&M Reference** | POAM-007 (alternate processing site) |
@@ -405,7 +405,7 @@ The following risk register documents all identified risks, their analysis, curr
 | **Likelihood** | Very Low (1) — backup media is encrypted; storage access is restricted; encryption key is separately managed |
 | **Impact** | High (4) — backup compromise could expose all historical user and exercise data |
 | **Inherent Risk Level** | Low |
-| **Current Controls** | AES-256 encryption of backup files (CP-9); access-controlled backup storage (MP-4); encryption keys managed separately from backup data (SC-12); backup access logged |
+| **Current Controls** | Backup scripts provided; operators are responsible for access-controlled backup storage, encryption, key management, and backup access logging appropriate to their deployment |
 | **Residual Risk Level** | Very Low |
 | **Recommended Mitigation** | Implement backup integrity verification; store encryption keys in hardware security module (HSM) or key management service; review backup storage access quarterly |
 | **POA&M Reference** | None (risk accepted at Very Low) |
@@ -414,12 +414,12 @@ The following risk register documents all identified risks, their analysis, curr
 
 | **Risk ID** | RA-020 |
 |---|---|
-| **Threat** | Compromise of Redis session store — attacker gains access to active session tokens, enabling session hijacking at scale |
-| **Vulnerability** | Redis contains all active session tokens; if Redis is directly accessible or has weak authentication, mass session hijacking is possible |
+| **Threat** | Compromise of Redis real-time state cache — attacker disrupts or manipulates game/session runtime state |
+| **Vulnerability** | Redis stores real-time/cache data for the application; if Redis is directly accessible or has weak authentication, an attacker could disrupt active exercises or access transient runtime data |
 | **Likelihood** | Very Low (1) — Redis is not externally accessible; bound to Docker internal network only; authentication configured in production profiles |
-| **Impact** | Very High (5) — access to Redis session store enables hijacking of all active user sessions simultaneously |
+| **Impact** | Moderate (3) — compromise could disrupt active exercises or expose transient runtime state; login refresh tokens are stored as server-side hashes in PostgreSQL, not Redis |
 | **Inherent Risk Level** | Moderate |
-| **Current Controls** | Redis bound to Docker internal network (SC-7); Redis authentication configured; network segmentation prevents external access; session tokens expire within 30 minutes (AC-12) |
+| **Current Controls** | Redis bound to Docker internal network (SC-7); Redis authentication configured; network segmentation prevents external access; access tokens are short-lived and refresh tokens are stored as server-side hashes (AC-12) |
 | **Residual Risk Level** | Low |
 | **Recommended Mitigation** | Verify Redis authentication is enforced in all deployment profiles; implement Redis ACLs to restrict commands; consider Redis TLS for internal communications; audit Redis configuration in deployment checklist |
 | **POA&M Reference** | None (residual risk accepted at Low) |
@@ -443,7 +443,7 @@ The following risk register documents all identified risks, their analysis, curr
 
 | Risk ID | Risk Description | Residual Risk | POA&M Reference |
 |---|---|---|---|
-| RA-001 | Credential stuffing / brute force | Moderate | POAM-001 |
+| RA-001 | Credential stuffing / brute force | Moderate | POAM-001 closed for privileged MFA; consider player MFA policy |
 | RA-002 | Unpatched component vulnerabilities | Low | POAM-003 |
 | RA-007 | Denial of service | Low | POAM-006 |
 | RA-009 | Supply chain compromise | Moderate | POAM-008 |
@@ -457,7 +457,7 @@ The following residual risks are accepted by the System Owner and Authorizing Of
 | Risk ID | Risk Description | Residual Risk | Basis for Acceptance |
 |---|---|---|---|
 | RA-003 | SQL/injection attacks | Low | Prisma ORM + Zod provide strong protection; pentest will validate |
-| RA-004 | Cross-Site Scripting | Very Low | DOMPurify + CSP provide defense in depth |
+| RA-004 | Cross-Site Scripting | Very Low | React output encoding, CSP, httpOnly cookies, and Zod validation provide defense in depth |
 | RA-005 | Privilege escalation | Very Low | Server-side RBAC; no client-side bypass possible |
 | RA-006 | Session hijacking | Very Low | TLS + httpOnly + HSTS eliminate primary attack vectors |
 | RA-008 | Malicious insider | Low | Background checks + audit logging + separation of duties |
@@ -468,14 +468,14 @@ The following residual risks are accepted by the System Owner and Authorizing Of
 | RA-015 | OIDC SSO attack | Low | Redirect URI whitelisting; token validation |
 | RA-017 | Infrastructure outage | Very Low | Availability is LOW impact; RTO 4 hours acceptable |
 | RA-018 | Verbose error messages | Very Low | Generic production errors; server-side logging |
-| RA-019 | Backup media compromise | Very Low | AES-256 encryption; separate key management |
-| RA-020 | Redis session store compromise | Low | Internal network only; authentication configured |
+| RA-019 | Backup media compromise | Very Low | Operator-controlled backup encryption and key management required |
+| RA-020 | Redis real-time state cache compromise | Low | Internal network only; authentication configured |
 
 ---
 
 ## 7. Recommendations Summary
 
-1. **Enforce MFA for all user roles** — Priority: High. Reduces credential attack risk significantly.
+1. **Consider MFA for all player accounts** — Priority: Medium. Privileged local MFA is implemented; organizations with stricter requirements should mandate MFA for players through OIDC/SSO or operating policy.
 2. **Complete penetration testing** — Priority: High. Required for ATO; validates all technical controls.
 3. **Formalize supply chain risk assessment** — Priority: Medium. Growing threat to npm ecosystem.
 4. **Implement SIEM or centralized log aggregation** — Priority: Medium. Enhances detection capability.

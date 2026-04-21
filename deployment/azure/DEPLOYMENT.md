@@ -781,7 +781,7 @@ OIDC_ID_CLAIM=oid
 OIDC_AUTO_PROVISION=true
 
 # Default role assigned to auto-provisioned SSO users
-OIDC_DEFAULT_ROLE=PARTICIPANT
+OIDC_DEFAULT_ROLE=PLAYER
 ```
 
 **Resolved values for your tenant** (fill in after completing the steps above):
@@ -816,7 +816,7 @@ az webapp config appsettings set \
     OIDC_EMAIL_CLAIM=email \
     OIDC_ID_CLAIM=oid \
     OIDC_AUTO_PROVISION=true \
-    OIDC_DEFAULT_ROLE=PARTICIPANT
+    OIDC_DEFAULT_ROLE=PLAYER
 ```
 
 ### 11.7 Restrict Access to Specific Groups (Optional)
@@ -982,7 +982,7 @@ After completing the deployment, verify the following:
 - [ ] Application loads at `https://yourdomain.com`
 - [ ] HTTPS certificate is valid (no browser warnings)
 - [ ] `/api/health` returns 200 OK
-- [ ] Database migrations have been run: `az webapp ssh --resource-group $RG --name ${APP_NAME}-backend` → `npm run db:migrate`
+- [ ] Database migrations completed successfully. Current container images run Prisma migrations before API startup; verify backend startup logs show no pending or failed migrations.
 - [ ] Seed data loaded: `npm run db:seed`
 - [ ] First user registered and granted SUPER_ADMIN role
 - [ ] SSO login works (if Entra ID configured)

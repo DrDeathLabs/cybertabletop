@@ -75,10 +75,12 @@ docker compose -p cybertabletop -f docker-compose.pull.yml pull
 docker compose -p cybertabletop -f docker-compose.pull.yml up -d
 ```
 
-### 4. Run migrations and seed scenarios
+### 4. Seed scenarios
+
+The backend container runs Prisma migrations automatically before starting the
+API. After the stack is healthy, seed the built-in scenarios:
 
 ```bash
-docker compose -p cybertabletop -f docker-compose.pull.yml exec backend npm run db:migrate
 docker compose -p cybertabletop -f docker-compose.pull.yml exec backend npm run db:seed
 ```
 
@@ -101,7 +103,6 @@ git clone https://github.com/darrenmdeath/cybertabletop.git
 cd cybertabletop
 ./scripts/bootstrap.sh
 docker compose -p cybertabletop up -d --build
-docker compose -p cybertabletop exec backend npm run db:migrate
 docker compose -p cybertabletop exec backend npm run db:seed
 ```
 
@@ -112,7 +113,6 @@ git clone https://github.com/darrenmdeath/cybertabletop.git
 cd cybertabletop
 .\scripts\bootstrap.ps1
 docker compose -p cybertabletop up -d --build
-docker compose -p cybertabletop exec backend npm run db:migrate
 docker compose -p cybertabletop exec backend npm run db:seed
 ```
 
@@ -182,6 +182,7 @@ Important values in `.env`:
 | `JWT_SECRET` | Access-token signing secret |
 | `JWT_REFRESH_SECRET` | Refresh-token signing secret |
 | `SESSION_SECRET` | Server session secret |
+| `MFA_ENCRYPTION_KEY` | 32-byte base64 key for encrypting TOTP MFA secrets |
 | `REQUIRE_INVITE` | Require invite code for registration |
 | `INVITE_CODE` | Invite code users must enter during registration |
 | `FRONTEND_URL` | Public frontend URL |
@@ -203,7 +204,6 @@ Prebuilt image path:
 git pull
 docker compose -p cybertabletop -f docker-compose.pull.yml pull
 docker compose -p cybertabletop -f docker-compose.pull.yml up -d
-docker compose -p cybertabletop -f docker-compose.pull.yml exec backend npm run db:migrate
 docker compose -p cybertabletop -f docker-compose.pull.yml exec backend npm run db:seed
 ```
 
@@ -212,7 +212,6 @@ Source-build path:
 ```bash
 git pull
 docker compose -p cybertabletop up -d --build
-docker compose -p cybertabletop exec backend npm run db:migrate
 docker compose -p cybertabletop exec backend npm run db:seed
 ```
 
@@ -221,16 +220,28 @@ docker compose -p cybertabletop exec backend npm run db:seed
 ### Back up PostgreSQL
 
 ```bash
-docker compose -p cybertabletop -f docker-compose.pull.yml exec postgres pg_dump -U cybertabletop cybertabletop > cybertabletop-backup.sql
+./scripts/backup.sh
+```
+
+On Windows PowerShell:
+
+```powershell
+.\scripts\backup.ps1
 ```
 
 ### Restore PostgreSQL
 
 ```bash
-docker compose -p cybertabletop -f docker-compose.pull.yml exec -T postgres psql -U cybertabletop cybertabletop < cybertabletop-backup.sql
+./scripts/restore.sh ./backups/cybertabletop-YYYYMMDDTHHMMSSZ.sql.gz
 ```
 
-Adjust the compose command if using the source-build file.
+On Windows PowerShell:
+
+```powershell
+.\scripts\restore.ps1 -BackupFile .\backups\cybertabletop-YYYYMMDDTHHMMSSZ.sql.zip
+```
+
+Test restores in a clean stack before relying on backups for production.
 
 ## Troubleshooting
 
@@ -283,4 +294,3 @@ docker compose -p cybertabletop -f docker-compose.pull.yml down -v
 ```
 
 Then bootstrap and start again.
-

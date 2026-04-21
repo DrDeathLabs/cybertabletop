@@ -93,7 +93,7 @@ The assessment encompasses all components within the CyberTabletop authorization
 - **Node.js/Express Backend API Container:** Application code, authentication, authorization, input validation, session management, logging
 - **React Frontend Application:** Client-side code, content security policy, secure coding practices
 - **PostgreSQL Database Container/Service:** Database configuration, access controls, encryption, audit logging
-- **Redis Cache/Session Store:** Configuration, access controls, session security
+- **Redis Real-Time State Cache:** Configuration, access controls, and Socket.io/game-state support
 - **Docker Configuration:** Compose files, network configuration, container security settings
 - **Host Operating System:** OS hardening, user accounts, network configuration (for on-premises assessment)
 - **Cloud Infrastructure Configuration:** Security group rules, IAM policies, service configurations (for cloud deployment assessment)
@@ -344,14 +344,14 @@ Key Questions:
 ### 7.3 Observation Procedures
 
 **CTT-OBS-001 — Account Management Process Observation**
-- Observe an administrator creating a new user account
-- Verify that the account creation process enforces required fields and role assignment
-- Observe an administrator disabling a user account
-- Verify that the account disabling process is logged
+- Observe invite-gated self-registration for a new account
+- Verify that required registration fields, password policy, and invite-code requirements are enforced
+- Observe an administrator changing a user's role within the Users tab
+- Verify that the role-change event is logged
 
 **CTT-OBS-002 — Login and Authentication Observation**
-- Observe the login process including system use notification banner display
-- Verify that the banner must be acknowledged before proceeding
+- Observe the login process and confirm any organization-required use notice is provided by the deployment wrapper, identity provider, or reverse proxy
+- Verify privileged users are forced into TOTP MFA setup or MFA challenge before protected application access
 - Observe failed login behavior (attempt to trigger account lockout)
 - Observe OIDC/SSO authentication flow if configured
 
@@ -403,7 +403,7 @@ Objective: Verify that data in transit is properly protected.
 Objective: Verify that security response headers are correctly configured.
 - Content-Security-Policy: verify presence and restrictiveness
 - X-Content-Type-Options: verify "nosniff" is set
-- X-Frame-Options: verify clickjacking protection is in place
+- Clickjacking protection: verify `frame-ancestors` or equivalent control is applied at the public edge for standalone deployments. The bundled localhost config intentionally omits anti-frame headers so embedded local preview browsers can load the app.
 - Referrer-Policy: verify appropriate referrer policy
 - Permissions-Policy: verify unnecessary browser features are disabled
 - Server header: verify server version information is not exposed
@@ -447,7 +447,7 @@ Objective: Review existing vulnerability scan results and conduct supplemental s
 
 **CTT-TT-010 — Backup and Recovery Verification**
 Objective: Verify that backup procedures are in place and have been tested.
-- Review backup configuration (pg_dump cron job or cloud backup settings)
+- Review backup configuration (CyberTabletop backup scripts, pg_dump job, or cloud backup settings)
 - Review backup logs for evidence of recent successful backups
 - Review backup encryption configuration
 - Request evidence of most recent backup restoration test

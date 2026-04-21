@@ -103,7 +103,7 @@ CyberTabletop provides the following core capabilities:
 
 **Reporting and Analytics:** Upon exercise completion, the system generates after-action reports detailing participant decisions, scores, time-to-respond metrics, and areas for improvement. Reports can be exported in PDF format.
 
-**Role-Based Access Control:** The system enforces distinct roles — Administrator, Facilitator, and Participant — with each role granted access only to the functions appropriate to its responsibilities.
+**Role-Based Access Control:** The system enforces distinct roles - `SUPER_ADMIN`, `ORG_ADMIN`, `FACILITATOR`, and `PLAYER` - with each role granted access only to the functions appropriate to its responsibilities.
 
 **Single Sign-On Integration:** CTT supports both local authentication and OpenID Connect (OIDC)-based single sign-on for enterprise environments using identity providers such as Microsoft Entra ID (Azure AD), Okta, or similar OIDC-compliant identity providers.
 
@@ -113,10 +113,9 @@ CyberTabletop provides the following core capabilities:
 
 CyberTabletop serves the following user populations:
 
-- **System Administrators:** Personnel responsible for deploying, configuring, and maintaining the CTT platform. Full administrative access.
+- **System Administrators:** Personnel responsible for deploying, configuring, and maintaining the CTT platform. `SUPER_ADMIN` and `ORG_ADMIN` roles provide application administration.
 - **Facilitators:** Security training professionals, ISSOs, and managers who design and run tabletop exercises. Create and manage sessions and scenarios.
-- **Participants:** Exercise participants including IT staff, executives, legal, communications, and operations personnel. Access limited to active exercise sessions.
-- **Observers:** Personnel who observe exercises in real time without decision-making participation. Read-only access to assigned session data.
+- **Players:** Exercise participants including IT staff, executives, legal, communications, and operations personnel. Access limited to active exercise sessions they join.
 
 ### 3.4 System Environment
 
@@ -175,14 +174,14 @@ The overall categorization is MODERATE because the highest applicable impact lev
 |---|---|---|---|
 | Frontend | React.js | 18.x | User interface |
 | Backend API | Node.js / Express | 20.x LTS / 4.x | Application logic and API |
-| Database | PostgreSQL | 15.x | Persistent data storage |
+| Database | PostgreSQL | 16.x | Persistent data storage |
 | Real-Time Engine | Socket.io | 4.x | WebSocket-based real-time communication |
 | Reverse Proxy | Nginx | 1.24.x | TLS termination, load balancing, static file serving |
 | Container Runtime | Docker Engine | 24.x | Container execution |
 | Container Orchestration | Docker Compose / ECS / AKS | - | Multi-container management |
-| Session Store | Redis | 7.x | Session caching and Socket.io adapter |
+| Real-Time State Cache | Redis | 7.x | Socket.io/game-state support and cache data |
 | Authentication Library | Passport.js | 0.6.x | Local and OIDC authentication |
-| ORM | Sequelize | 6.x | Database abstraction |
+| ORM | Prisma | 5.x | Database abstraction |
 | LLM Integration (Cloud) | Anthropic Claude API | API v1 | AI-assisted scenario generation |
 | LLM Integration (Local) | Ollama | 0.1.x | Local LLM for scenario generation |
 
@@ -197,15 +196,12 @@ Internet --> [Nginx Reverse Proxy / TLS Termination]
                  |
          [Node.js / Express API Backend]
                  |                  |
-     [PostgreSQL Database]   [Redis Cache/Session Store]
+     [PostgreSQL Database]   [Redis Real-Time State Cache]
 ```
 
 ### 5.4 Data at Rest
 
-All persistent data is stored in PostgreSQL. Database files are encrypted at rest using:
-- On-premises: Full-disk encryption (LUKS or equivalent) on the host system.
-- AWS: RDS encryption using AWS KMS-managed keys (AES-256).
-- Azure: Azure Disk Encryption and transparent data encryption on Azure Database for PostgreSQL.
+Persistent application data is stored in PostgreSQL. CyberTabletop encrypts TOTP MFA secrets at the application layer. Database, host-volume, Redis persistence, and backup encryption are deployment responsibilities and should be implemented using the operator's platform controls, such as host full-disk encryption, cloud-managed database encryption, encrypted Docker volumes, or encrypted backup storage.
 
 ### 5.5 Data in Transit
 
@@ -223,7 +219,7 @@ The CyberTabletop authorization boundary encompasses all software components, Do
 - React frontend application (served as static files from Nginx)
 - Node.js/Express backend API container
 - PostgreSQL database container (or managed cloud database service)
-- Redis cache/session store container (or managed cloud cache service)
+- Redis real-time state cache container (or managed cloud cache service)
 - All Docker networks interconnecting the above components
 - Configuration files, environment variables, and secrets managed by the deployment
 
@@ -326,7 +322,7 @@ Implementation status codes:
 #### AC-2 — Account Management
 **Status:** Implemented
 
-**Implementation:** CTT implements formal account management through its administrative interface. Administrators can create, modify, disable, and delete user accounts. Account types are Administrator, Facilitator, Participant, and Observer. New accounts require administrator approval. Accounts inactive for 90 days are automatically disabled. Terminated user accounts are disabled within 24 hours of notification. The system maintains an audit log of all account lifecycle events. Service accounts used by system components are documented and reviewed quarterly.
+**Implementation:** CTT implements account management through invite-gated registration and its administrative interface. The first non-system account becomes `SUPER_ADMIN`; subsequent self-registered accounts become `PLAYER` unless an administrator changes their role. Supported roles are `SUPER_ADMIN`, `ORG_ADMIN`, `FACILITATOR`, and `PLAYER`. Administrators can review users, change roles within their authority, and reset MFA for another user after identity verification. The built-in `system@cybertabletop.internal` identity owns seeded/built-in records and is not intended for interactive login. The system maintains audit records for user lifecycle and authentication events.
 
 **Responsible Role:** System Administrator, ISSO
 
@@ -335,7 +331,7 @@ Implementation status codes:
 #### AC-3 — Access Enforcement
 **Status:** Implemented
 
-**Implementation:** Access enforcement is implemented through middleware in the Express.js backend. Every API endpoint is protected by an authentication check that verifies the user's JSON Web Token (JWT). Role-based authorization middleware evaluates the user's assigned role against the required permissions for each endpoint. The RBAC matrix defines: Administrators have full system access; Facilitators can create and manage sessions and scenarios; Participants can only access active sessions they are enrolled in; Observers have read-only access to sessions they are assigned to. The React frontend enforces the same role checks on the client side, with server-side enforcement as the authoritative control.
+**Implementation:** Access enforcement is implemented through middleware in the Express.js backend. Protected API endpoints verify the user's JWT and current user record. Role-based authorization middleware evaluates the user's assigned role against the required permissions for each endpoint. The RBAC matrix defines: `SUPER_ADMIN` has full platform administration, `ORG_ADMIN` has organization-level administration, `FACILITATOR` can create and manage sessions and scenarios, and `PLAYER` can access sessions they join. The React frontend enforces the same role checks on the client side, with server-side enforcement as the authoritative control.
 
 **Responsible Role:** Application Developer, System Administrator
 
@@ -353,7 +349,7 @@ Implementation status codes:
 #### AC-5 — Separation of Duties
 **Status:** Partially Implemented
 
-**Implementation:** The system enforces separation of duties through its role hierarchy. Facilitators cannot modify system-level configuration; Participants cannot access administrative functions; Administrators are separate from exercise participants. However, in small deployment environments, a single individual may hold both Administrator and Facilitator roles. Compensating controls include comprehensive audit logging of all administrative actions and periodic access reviews. Full separation of administrative and operational duties is recommended for production deployments serving more than five staff members.
+**Implementation:** The system enforces separation of duties through its role hierarchy. `FACILITATOR` users can manage exercises but cannot administer users or platform security settings. `PLAYER` users cannot access administrative functions. `SUPER_ADMIN` and `ORG_ADMIN` users have administrative capabilities appropriate to their scope. In small deployments, a single individual may hold both administrative and facilitator responsibilities; compensating controls include audit logging of role changes and administrative actions, plus periodic access review by the operator.
 
 **Responsible Role:** System Owner, ISSO
 
@@ -362,7 +358,7 @@ Implementation status codes:
 #### AC-6 — Least Privilege
 **Status:** Implemented
 
-**Implementation:** CTT applies the principle of least privilege at multiple layers. The application enforces role-based permissions such that no user has more access than required for their function. The Node.js backend process runs as a non-root user within its container. The PostgreSQL database user used by the application has only minimum required permissions (SELECT, INSERT, UPDATE, DELETE on application tables; no superuser privileges). The Nginx process runs as an unprivileged user. Administrative functions are restricted to users explicitly assigned the Administrator role by an existing Administrator.
+**Implementation:** CTT applies the principle of least privilege at multiple layers. The application enforces role-based permissions such that no user has more access than required for their function. The Node.js backend process runs as a non-root user within its container. PostgreSQL and Redis are isolated on Docker internal networks and are not published to the host by default. Administrative functions are restricted to users explicitly assigned `SUPER_ADMIN` or `ORG_ADMIN` as appropriate.
 
 **Responsible Role:** System Administrator, Application Developer
 
@@ -371,16 +367,16 @@ Implementation status codes:
 #### AC-7 — Unsuccessful Login Attempts
 **Status:** Implemented
 
-**Implementation:** The authentication module implements account lockout after five consecutive failed login attempts. Upon five failed attempts, the account is locked for 15 minutes before the user may attempt again. Administrators can manually unlock accounts. All failed login attempts are recorded in the audit log with timestamp, username, and source IP address. Automated alerts are generated when ten or more failed attempts occur within five minutes from a single IP address.
+**Implementation:** The authentication module implements account lockout after five consecutive failed login attempts. Upon five failed attempts, the account is locked for 30 minutes before the user may attempt again. Failed login and lockout events are recorded in the audit log with timestamp, account context, source IP address, and user-agent when available. The Admin security dashboard highlights failed-login and lockout activity for operator review.
 
 **Responsible Role:** Application Developer, System Administrator
 
 ---
 
 #### AC-8 — System Use Notification
-**Status:** Implemented
+**Status:** Planned / Operator Dependent
 
-**Implementation:** A system use notification banner is displayed on the CTT login page prior to authentication. The banner notifies users that: (1) use of the system constitutes consent to monitoring; (2) unauthorized use is prohibited and may be subject to criminal prosecution; (3) there is no expectation of privacy in system usage. The banner text is configurable by administrators and is reviewed annually by the ISSO. Users must acknowledge the banner by clicking "Acknowledge and Continue" before proceeding to authentication.
+**Implementation:** CyberTabletop currently provides the login and registration screens but does not include a configurable pre-authentication system-use banner in the application UI. Organizations that require AC-8 style notification should add an approved banner at the public reverse proxy/identity-provider layer or track application-level banner support as a local enhancement.
 
 **Responsible Role:** System Administrator, ISSO
 
@@ -389,7 +385,7 @@ Implementation status codes:
 #### AC-11 — Device Lock
 **Status:** Not Applicable
 
-**Implementation:** CTT is a web application that does not manage device lock functionality. Session inactivity timeout is implemented at the application layer (see AC-12). Device lock is the responsibility of the end-user's operating system and is outside the CTT authorization boundary.
+**Implementation:** CTT is a web application that does not manage device lock functionality. Session lifetime controls are implemented with short-lived access tokens and refresh-token rotation (see AC-12). Device lock is the responsibility of the end-user's operating system and is outside the CTT authorization boundary.
 
 **Responsible Role:** N/A
 
@@ -398,7 +394,7 @@ Implementation status codes:
 #### AC-12 — Session Termination
 **Status:** Implemented
 
-**Implementation:** CTT implements session management controls that terminate idle sessions. HTTP sessions (JWT-based) expire after 8 hours of inactivity. WebSocket (Socket.io) connections are terminated when the JWT expires or the user explicitly logs out. Sessions are also terminated when an administrator disables or deletes the associated user account. Session invalidation is enforced server-side through a token blacklist stored in Redis; invalidated tokens are rejected even if they have not yet expired. Users are notified of impending session expiration five minutes before timeout with an option to extend.
+**Implementation:** CTT implements session management with 15-minute JWT access tokens and 7-day server-side refresh tokens stored only as hashes. Refresh tokens are rotated on use and revoked on logout. Protected API requests validate the token issuer, audience, user identifier, role, organization, and current user record. Deleted users cannot continue refreshing because their refresh-token relationship no longer resolves to a valid account; existing access tokens expire naturally within 15 minutes.
 
 **Responsible Role:** Application Developer, System Administrator
 
@@ -407,7 +403,7 @@ Implementation status codes:
 #### AC-14 — Permitted Actions Without Identification or Authentication
 **Status:** Implemented
 
-**Implementation:** The only actions permitted without authentication are: viewing the login page, viewing the system use notification banner, and initiating the OIDC authentication redirect. No application data, functionality, or content is accessible without a valid authenticated session. The `/health` status endpoint returns only system availability status and contains no sensitive information.
+**Implementation:** The only actions permitted without authentication are viewing the login and registration pages, submitting local authentication/registration requests, completing MFA login/setup flow prerequisites, and initiating the OIDC authentication redirect. No application data, scenario content, or exercise results are accessible without a valid authenticated session. The `/health` status endpoint returns only system availability status and contains no sensitive information.
 
 **Responsible Role:** Application Developer
 
@@ -452,7 +448,7 @@ Implementation status codes:
 #### AC-22 — Publicly Accessible Content
 **Status:** Implemented
 
-**Implementation:** CTT does not host publicly accessible content beyond the login page and system use notification banner. No application data, scenario content, user data, or exercise results are accessible without authentication. The ISSO reviews publicly accessible components annually to confirm no sensitive information has been inadvertently exposed.
+**Implementation:** CTT does not host publicly accessible content beyond authentication, registration, health, and SSO bootstrap surfaces. No application data, scenario content, user data, or exercise results are accessible without authentication. The ISSO or operator should review publicly accessible components periodically to confirm no sensitive information has been inadvertently exposed.
 
 **Responsible Role:** ISSO, System Administrator
 
@@ -571,9 +567,9 @@ Implementation status codes:
 ---
 
 #### AU-9 — Protection of Audit Information
-**Status:** Implemented
+**Status:** Partially Implemented
 
-**Implementation:** Audit logs are written to append-only log files or streams not modifiable by application-level processes. The application's database user cannot modify or delete log table entries. Log files on the host filesystem are owned by root and not writable by application service accounts. Cloud log streams are configured with retention locks preventing modification or early deletion. Only the System Administrator and ISSO have access to raw log files. Logs are forwarded to a centralized SIEM outside the direct control of the CTT application for integrity protection.
+**Implementation:** CTT records security-relevant events in application audit records and structured service logs. Application code does not expose audit deletion or modification workflows. Operators should forward logs to append-only external storage or a SIEM for tamper-resistant retention and should restrict direct database administrative access.
 
 **Responsible Role:** System Administrator, ISSO
 
@@ -703,7 +699,7 @@ Implementation status codes:
 #### CM-6 — Configuration Settings
 **Status:** Implemented
 
-**Implementation:** Security-relevant configuration settings are documented and enforced for all CTT components. Key settings include: Nginx TLS configuration (TLS 1.2+, strong cipher suites, HSTS enabled); Node.js security headers via helmet.js; PostgreSQL connection encryption; Docker container security options (no-new-privileges, read-only root filesystem where feasible); and environment variable management through Docker secrets or cloud-native secrets management. Deviations from documented settings trigger continuous monitoring alerts.
+**Implementation:** Security-relevant configuration settings are documented and enforced for CTT components. Key settings include: Nginx TLS configuration (TLS 1.2+, strong cipher suites, HSTS enabled); Node.js security headers via helmet.js; privileged-role TOTP MFA; PostgreSQL and Redis internal networking; Docker `no-new-privileges`; and environment variable management through `.env`, Docker secrets, or cloud-native secrets management depending on deployment maturity.
 
 **Responsible Role:** System Administrator
 
@@ -712,7 +708,7 @@ Implementation status codes:
 #### CM-7 — Least Functionality
 **Status:** Implemented
 
-**Implementation:** CTT containers are built from minimal base images (node:20-alpine, nginx:alpine, postgres:15-alpine) to reduce the attack surface. Unnecessary OS packages are not installed. Only required ports are exposed. The Nginx configuration disables unused HTTP methods and exposes only required routes. The Node.js application does not expose debug endpoints in production. Package dependencies are regularly audited for unused packages.
+**Implementation:** CTT containers are built from minimal base images (node:20-alpine, nginx:alpine, postgres:16-alpine, and redis:7-alpine) to reduce the attack surface. Unnecessary OS packages are not installed. Only required ports are exposed. The Nginx configuration exposes frontend, API, health, and Socket.io routes. The Node.js application does not expose debug endpoints in production. Package dependencies are audited through npm audit and CI checks.
 
 **Responsible Role:** Application Developer, System Administrator
 
@@ -777,7 +773,7 @@ Implementation status codes:
 #### CP-9 — Information System Backup
 **Status:** Implemented
 
-**Implementation:** PostgreSQL database backups are performed daily using pg_dump (on-premises) or automated snapshots (AWS RDS, Azure Database). Backups are encrypted using AES-256. Backup retention is 30 days for daily backups, with monthly backups retained for 12 months. Backup integrity is verified monthly via test restore to a separate environment. Configuration and scenario content are backed up via version control.
+**Implementation:** CyberTabletop provides PostgreSQL backup and restore scripts for Docker deployments (`scripts/backup.sh`, `scripts/backup.ps1`, `scripts/restore.sh`, and `scripts/restore.ps1`). Operators are responsible for scheduling backups, protecting backup files, applying encryption or secure storage appropriate to their environment, and testing restore into a clean stack before relying on backups for production recovery. Configuration and source-controlled scenario seed content are backed up via version control.
 
 **Responsible Role:** System Administrator
 
@@ -813,9 +809,9 @@ Implementation status codes:
 ---
 
 #### IA-2(1) — Multi-Factor Authentication to Privileged Accounts
-**Status:** Partially Implemented
+**Status:** Implemented
 
-**Implementation:** MFA for administrative accounts is enforced when using OIDC/SSO by delegating to the enterprise identity provider. For local administrator accounts, MFA is available but not yet enforced as a mandatory control for all deployments. Enforcement of MFA for all local administrator accounts is a tracked POA&M item (POAM-001).
+**Implementation:** Local TOTP MFA is enforced for `SUPER_ADMIN`, `ORG_ADMIN`, and `FACILITATOR` accounts. Privileged users without MFA are forced into MFA setup before accessing protected application features. MFA-enabled users receive a short-lived MFA challenge after password validation and must complete a TOTP or recovery-code challenge before access and refresh tokens are issued. Operators using OIDC/SSO should also enforce MFA at the identity provider.
 
 **Responsible Role:** System Administrator, ISSO
 
@@ -833,7 +829,7 @@ Implementation status codes:
 #### IA-4 — Identifier Management
 **Status:** Implemented
 
-**Implementation:** User identifiers (account IDs) are system-generated UUIDs assigned at account creation. Email addresses serve as human-readable unique identifiers and are verified via email confirmation link. Identifiers are never reused. Disabled accounts retain their identifiers for audit integrity purposes.
+**Implementation:** User identifiers (account IDs) are system-generated UUIDs assigned at account creation. Email addresses serve as human-readable unique identifiers. Email verification is not implemented in the local-account flow; operators should use invite-gated registration, administrator review, or OIDC/SSO when stronger account proofing is required. Identifiers are not reused.
 
 **Responsible Role:** Application Developer, System Administrator
 
@@ -842,7 +838,7 @@ Implementation status codes:
 #### IA-5 — Authenticator Management
 **Status:** Implemented
 
-**Implementation:** Passwords for local accounts must meet: minimum 12 characters, checked against common password lists (via HaveIBeenPwned API at registration), and not matching previous 10 passwords. Passwords are stored exclusively as bcrypt hashes with work factor 12. Temporary passwords expire after 24 hours. API tokens for service accounts are 256-bit random values stored as SHA-256 hashes and rotated every 90 days.
+**Implementation:** Passwords for local accounts must be at least 12 characters and include uppercase, lowercase, numeric, and special characters. Passwords are stored exclusively as bcrypt hashes with work factor 12. TOTP MFA secrets are encrypted at rest with `MFA_ENCRYPTION_KEY` using AES-256-GCM. MFA recovery codes are shown once and stored only as bcrypt hashes. JWT signing secrets and refresh-token secrets are externalized through deployment configuration.
 
 **Responsible Role:** Application Developer, System Administrator
 
@@ -869,7 +865,7 @@ Implementation status codes:
 #### IA-8 — Identification and Authentication (Non-Organizational Users)
 **Status:** Implemented
 
-**Implementation:** Non-organizational users (participants invited from external organizations) authenticate through the same mechanisms as organizational users — local accounts or OIDC. Non-organizational users receive the Participant role and are limited to active sessions they are enrolled in.
+**Implementation:** Non-organizational users invited from external organizations authenticate through the same mechanisms as organizational users: local accounts or OIDC. Non-organizational users typically receive the `PLAYER` role and are limited to active sessions they join.
 
 **Responsible Role:** System Administrator, Application Developer
 
@@ -995,7 +991,7 @@ Implementation status codes:
 
 #### PL-4 — Rules of Behavior
 **Status:** Implemented
-**Implementation:** Rules of behavior are incorporated into the system use notification banner and the organization's acceptable use policy. All users acknowledge the rules of behavior before receiving system access.
+**Implementation:** Rules of behavior are primarily an operator responsibility and should be incorporated into the organization's acceptable use policy, identity-provider workflow, or reverse-proxy banner. CyberTabletop does not currently force a separate in-app rules-of-behavior acknowledgement before login.
 **Responsible Role:** ISSO, System Owner
 
 #### PL-8 — Security and Privacy Architectures
@@ -1130,12 +1126,12 @@ Implementation status codes:
 
 #### SC-12 — Cryptographic Key Establishment and Management
 **Status:** Implemented
-**Implementation:** TLS private keys are stored in restricted-access directories. JWT signing secrets are stored as Docker secrets or cloud-native secrets (AWS Secrets Manager, Azure Key Vault) and rotated annually. Database encryption keys are managed by the cloud provider's KMS for cloud deployments and by full-disk encryption for on-premises deployments.
+**Implementation:** TLS private keys are stored in restricted-access directories. JWT signing secrets, refresh-token secrets, session secrets, database passwords, Redis passwords, and MFA_ENCRYPTION_KEY are externalized through environment configuration, Docker secrets, or cloud-native secrets management depending on deployment maturity. Database, volume, and backup encryption keys are managed by the operator's selected hosting platform.
 **Responsible Role:** System Administrator, ISSO
 
 #### SC-13 — Cryptographic Protection
 **Status:** Implemented
-**Implementation:** CTT uses industry-standard cryptographic algorithms: AES-256 for data encryption at rest; TLS 1.2/1.3 (AES-GCM with ECDHE) for data in transit; bcrypt with work factor 12 for password hashing; SHA-256 for hash operations; ECDSA or RSA-2048+ for digital signatures.
+**Implementation:** CTT uses industry-standard cryptographic algorithms: AES-256-GCM for TOTP secret encryption; TLS 1.2/1.3 (AES-GCM with ECDHE) for data in transit; bcrypt with work factor 12 for password and recovery-code hashing; HMAC-SHA256 for JWT signing; and deployment-managed encryption for database, volume, and backup data at rest.
 **Responsible Role:** Application Developer, System Administrator
 
 #### SC-15 — Collaborative Computing Devices and Applications
@@ -1159,8 +1155,8 @@ Implementation status codes:
 **Responsible Role:** System Administrator / Cloud Provider
 
 #### SC-28 — Protection of Information at Rest
-**Status:** Implemented
-**Implementation:** CTT data at rest is protected through full-disk encryption on on-premises host systems. Cloud deployments use provider-managed encryption: AWS RDS (AES-256, KMS-managed keys) and Azure Database for PostgreSQL (service-managed keys). Redis cache data is transient, does not contain sensitive persistent data, and is protected by network isolation.
+**Status:** Partially Implemented / Deployment Dependent
+**Implementation:** CTT encrypts TOTP MFA secrets at the application layer. Protection for PostgreSQL volumes, Redis persistence, host disks, and backup files is deployment dependent and must be configured by the operator using platform encryption, cloud database encryption, encrypted volumes, or a backup storage control appropriate to the environment.
 **Responsible Role:** System Administrator
 
 ---
@@ -1194,12 +1190,12 @@ Implementation status codes:
 
 #### SI-7 — Software, Firmware, and Information Integrity
 **Status:** Implemented
-**Implementation:** CTT uses package lock files to ensure reproducible builds with verified dependency versions. Docker image digests are pinned in production configurations. Container images are digitally signed and verified before deployment. The CI/CD pipeline performs checksum verification of downloaded packages.
+**Implementation:** CTT uses package lock files to support reproducible npm dependency installation and integrity verification. The GitHub workflow runs npm audit and Docker Compose build/config checks. Operators who need stronger supply-chain assurance should pin image digests, sign release images, and verify signatures in their deployment pipeline.
 **Responsible Role:** Application Developer, System Administrator
 
 #### SI-10 — Information Input Validation
 **Status:** Implemented
-**Implementation:** The CTT API validates all user-provided data using the Joi validation library, enforcing data types, maximum lengths, allowed character sets, and format requirements. SQL injection is prevented through Sequelize ORM parameterized queries. XSS is prevented through React's built-in output encoding and server-side sanitization of user-generated content.
+**Implementation:** The CTT API validates user-provided data using Zod schemas and route-level guards, enforcing data types, maximum lengths, allowed character sets, and business rules where implemented. SQL injection is mitigated through Prisma ORM parameterized queries. XSS risk is reduced through React's default output encoding, CSP, httpOnly cookies, and server-side validation.
 **Responsible Role:** Application Developer
 
 #### SI-12 — Information Management and Retention

@@ -93,14 +93,14 @@ The following information types have been identified for CyberTabletop based on 
 
 ### 4.3 Information Type 3: Audit and Event Log Data
 
-**Description:** System-generated audit logs capturing user actions, authentication events, authorization decisions, system errors, and administrative activities. Logs are append-only and stored in PostgreSQL with structured JSON format via Winston logging.
+**Description:** System-generated audit logs capturing user actions, authentication events, authorization decisions, system errors, and administrative activities. Logs are application-managed in PostgreSQL with structured metadata; the application does not expose audit update/delete workflows.
 
 **NIST SP 800-60 Mapping:** C.3.5.8 — Audit Information
 
 | Security Objective | Default Impact | Adjusted Impact | Rationale for Adjustment |
 |---|---|---|---|
 | Confidentiality | MODERATE | MODERATE | Audit logs contain user activity patterns, access times, and system events. Unauthorized disclosure could enable attackers to understand system usage patterns, identify administrative accounts, or time attacks to avoid detection. |
-| Integrity | MODERATE | MODERATE | Integrity of audit logs is critical for forensic capability, accountability, and compliance. Unauthorized modification would undermine the non-repudiation function of audit records. The append-only design mitigates but does not eliminate this risk. |
+| Integrity | MODERATE | MODERATE | Integrity of audit logs is critical for forensic capability, accountability, and compliance. Unauthorized modification would undermine the non-repudiation function of audit records. Application-layer append-only behavior mitigates ordinary misuse; operators should use SIEM or write-once external storage for stronger tamper resistance. |
 | Availability | LOW | LOW | Temporary unavailability of historical audit logs does not create immediate safety or operational impact. New audit entries should continue to be written, but historical review can be deferred. |
 
 **Information Type Impact:** SC = {(Confidentiality, MODERATE), (Integrity, MODERATE), (Availability, LOW)}

@@ -38,14 +38,14 @@ The POA&M is reviewed monthly by the ISSO and System Owner, and quarterly by the
 
 | Status | Count |
 |---|---|
-| Open — Active Remediation | 7 |
+| Open — Active Remediation | 6 |
 | Open — Planning | 3 |
-| Closed — Completed | 0 |
+| Closed — Completed | 1 |
 | **Total Items** | **10** |
 
 | Priority | Count |
 |---|---|
-| Priority 1 (Critical/High) | 2 |
+| Priority 1 (Critical/High) | 1 |
 | Priority 2 (Moderate) | 5 |
 | Priority 3 (Low) | 3 |
 
@@ -55,40 +55,45 @@ The POA&M is reviewed monthly by the ISSO and System Owner, and quarterly by the
 
 ---
 
-### POAM-001: MFA Not Enforced for All Privileged and Non-Privileged Accounts
+### POAM-001: Privileged MFA Enforcement Completed
 
 | Field | Value |
 |---|---|
 | **Item ID** | POAM-001 |
 | **Priority** | Priority 1 — High |
 | **Finding Source** | Self-Identified / SAR FINDING-001 |
-| **Weakness Description** | Multi-factor authentication (TOTP MFA) is available on the CyberTabletop platform but is only enforced for Administrator-role accounts. Facilitator accounts, which have significant exercise management privileges and access to all participant data, are not required to enroll in or use MFA. Standard Participant and Observer accounts also lack MFA enforcement. This increases the risk of account compromise for high-value accounts through credential phishing, credential stuffing, or brute force attacks. |
+| **Weakness Description** | Historical finding: local TOTP MFA was not enforced for all privileged roles. The current implementation requires TOTP MFA for `SUPER_ADMIN`, `ORG_ADMIN`, and `FACILITATOR` accounts before protected application access. Players may enable MFA from Profile, but it is not mandatory. |
 | **Associated Control(s)** | IA-2(1) — MFA to Privileged Accounts; IA-2(2) — MFA to Non-Privileged Accounts |
 | **Severity** | Moderate |
 | **Date Identified** | January 2026 |
-| **Scheduled Completion** | May 31, 2026 (Facilitators); September 30, 2026 (All accounts) |
+| **Scheduled Completion** | April 21, 2026 |
 | **Responsible Individual** | [SYSADMIN NAME] / Development Team Lead |
-| **Current Status** | Open — Active Remediation |
+| **Current Status** | Closed — Completed for privileged accounts. Optional/player MFA mandate remains an operator policy decision. |
 
 **Milestones:**
 
 | Milestone | Target Date | Status |
 |---|---|---|
-| 1. Identify and document all Facilitator accounts requiring MFA enforcement | April 15, 2026 | In Progress |
-| 2. Develop and test MFA enforcement for Facilitator role in non-production environment | April 30, 2026 | Not Started |
-| 3. Notify Facilitators of upcoming MFA requirement with enrollment instructions (14-day notice) | May 15, 2026 | Not Started |
-| 4. Deploy MFA enforcement for Facilitator role to production | May 31, 2026 | Not Started |
-| 5. Design MFA enforcement for all accounts with grace period mechanism | June 30, 2026 | Not Started |
-| 6. Staged rollout of MFA enforcement for Participant accounts | August 31, 2026 | Not Started |
-| 7. Full MFA enforcement for all accounts | September 30, 2026 | Not Started |
-| 8. Update SSP IA-2(1) and IA-2(2) status to Implemented | October 15, 2026 | Not Started |
+| 1. Identify privileged roles requiring MFA enforcement | April 21, 2026 | Complete |
+| 2. Implement TOTP setup and login challenge flow | April 21, 2026 | Complete |
+| 3. Encrypt TOTP secrets with `MFA_ENCRYPTION_KEY` | April 21, 2026 | Complete |
+| 4. Store recovery codes as bcrypt hashes and show plaintext codes once | April 21, 2026 | Complete |
+| 5. Force privileged users without MFA into setup before protected access | April 21, 2026 | Complete |
+| 6. Add admin MFA reset for verified lockout cases | April 21, 2026 | Complete |
+| 7. Add E2E coverage for privileged MFA enrollment | April 21, 2026 | Complete |
 
-**Resources Required:**
-- Development effort: Approximately 2 sprints for enforcement logic and user communication
-- Administrative effort: User communications and helpdesk support during enrollment period
-- Estimated cost: [COST ESTIMATE] in developer time
+**Closure Evidence:**
+- Backend MFA service and auth routes implement TOTP setup, verification, recovery code consumption, and privileged-role enforcement.
+- Prisma migration adds MFA verification and recovery-code fields.
+- Frontend MFA setup and challenge pages are implemented.
+- Admin Users tab supports MFA reset for another user.
+- Playwright E2E includes privileged MFA enrollment coverage.
 
-**Compensating Controls During Remediation:**
+**Remaining Operator Considerations:**
+- Player MFA is optional. Organizations that require MFA for every account should enforce that through OIDC/SSO policy or local operating policy.
+- Lost-authenticator reset must be handled through identity verification before an admin uses Reset MFA.
+
+**Supporting Controls:**
 - Account lockout after 5 failed attempts (AC-7) — reduces brute force risk
 - Rate limiting on login endpoint (SC-5) — reduces credential stuffing risk
 - Failed login alerting (IR-4) — enables detection of attacks
