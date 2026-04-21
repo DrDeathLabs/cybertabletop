@@ -148,9 +148,6 @@ interface SecurityPosture {
     endedSessions: number;
   };
   infrastructure: InfraProbe;
-  nistCsfPerformance: Record<string, number | null>;
-  nistCsfDecisionCounts: Record<string, number>;
-  nistCsfTotalDecisions: number;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -271,22 +268,6 @@ const COMPONENT_COLORS: Record<string, string> = {
   'CORS':               'bg-rose-500/15 text-rose-400 border border-rose-500/25',
 };
 
-const CSF_META: Record<string, { label: string; description: string; color: string }> = {
-  IDENTIFY: { label: 'Identify',  description: 'Asset management, risk assessment',         color: 'blue'   },
-  PROTECT:  { label: 'Protect',   description: 'Safeguards, access control, training',       color: 'green'  },
-  DETECT:   { label: 'Detect',    description: 'Anomalies, monitoring, detection processes', color: 'yellow' },
-  RESPOND:  { label: 'Respond',   description: 'Response planning, communications',          color: 'orange' },
-  RECOVER:  { label: 'Recover',   description: 'Recovery planning, improvements',            color: 'purple' },
-};
-
-const CSF_BAR_COLORS: Record<string, string> = {
-  blue:   'bg-blue-500',
-  green:  'bg-green-500',
-  yellow: 'bg-yellow-500',
-  orange: 'bg-orange-500',
-  purple: 'bg-purple-500',
-};
-
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function fmt(iso?: string | null) {
@@ -312,20 +293,6 @@ function getSeverity(action: string): Severity {
 
 function getCategory(action: string): EventCategory {
   return EVENT_CATEGORY[action] ?? 'DATA';
-}
-
-function scoreColor(score: number | null): string {
-  if (score === null) return 'text-slate-500';
-  if (score >= 80) return 'text-green-400';
-  if (score >= 60) return 'text-yellow-400';
-  return 'text-red-400';
-}
-
-function scoreBarColor(score: number | null): string {
-  if (score === null) return 'bg-slate-700';
-  if (score >= 80) return 'bg-green-500';
-  if (score >= 60) return 'bg-yellow-500';
-  return 'bg-red-500';
 }
 
 function exportCsv(logs: AuditLogEntry[], filename: string) {
@@ -663,7 +630,7 @@ function SecurityDashboardTab({ onSwitchToAudit }: { onSwitchToAudit?: (action: 
 
   if (!posture) return null;
 
-  const { overall, controls, metrics, infrastructure, nistCsfPerformance, nistCsfDecisionCounts } = posture;
+  const { overall, controls, metrics, infrastructure } = posture;
 
   // Group controls by family for display (alphabetical by family code)
   const families = ['AC', 'AU', 'CM', 'CP', 'IA', 'IR', 'PS', 'SC', 'SI'];
@@ -1020,12 +987,6 @@ function SecurityDashboardTab({ onSwitchToAudit }: { onSwitchToAudit?: (action: 
               <span className="text-slate-400 font-medium">Infra probes</span> — live on refresh · PostgreSQL · Redis PING · Nginx HTTP HEAD
             </span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-purple-400 inline-block" />
-            <span className="text-[11px] text-slate-500">
-              <span className="text-slate-400 font-medium">NIST CSF scores</span> — exercise decisions · refreshed on demand
-            </span>
-          </div>
           <div className="flex-1" />
           <span className="text-[11px] text-slate-600">{controls.length} controls · 9 families · NIST SP 800-53 Rev 5 · Click any row for detail</span>
         </div>
@@ -1118,70 +1079,6 @@ function SecurityDashboardTab({ onSwitchToAudit }: { onSwitchToAudit?: (action: 
             </div>
           </div>
         ))}
-      </div>
-
-      {/* ── NIST CSF Exercise Performance ────────────────────────────────────── */}
-      <div className="bg-slate-900/60 border border-slate-700/50 rounded-xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-700/50">
-          <div className="flex items-start justify-between">
-            <div>
-              <h2 className="text-sm font-semibold text-slate-300">NIST Cybersecurity Framework — Exercise Performance</h2>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Aggregated decision scores from tabletop exercises mapped to CSF functions
-                {posture.nistCsfTotalDecisions > 0 && ` · ${posture.nistCsfTotalDecisions} total decisions analyzed`}
-              </p>
-            </div>
-          </div>
-        </div>
-        <div className="p-5 space-y-5">
-          {Object.entries(CSF_META).map(([fn, meta]) => {
-            const score = nistCsfPerformance[fn];
-            const count = nistCsfDecisionCounts[fn] ?? 0;
-            const barColor = score !== null ? scoreBarColor(score) : 'bg-slate-700';
-            const barWidth = score !== null ? `${score}%` : '0%';
-
-            return (
-              <div key={fn}>
-                <div className="flex items-center justify-between mb-1.5">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-2 h-2 rounded-full ${CSF_BAR_COLORS[meta.color]}`} />
-                    <span className="text-sm font-medium text-slate-200">{meta.label}</span>
-                    <span className="text-xs text-slate-500">{meta.description}</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    {score !== null ? (
-                      <>
-                        <span className={`text-sm font-bold ${scoreColor(score)}`}>{score}%</span>
-                        {score < 60 && (
-                          <span className="text-xs bg-red-500/15 text-red-400 border border-red-500/30 rounded px-1.5 py-0.5 font-medium">
-                            Training Gap
-                          </span>
-                        )}
-                      </>
-                    ) : (
-                      <span className="text-xs text-slate-500 italic">No exercise data</span>
-                    )}
-                    <span className="text-xs text-slate-600 w-20 text-right">
-                      {count > 0 ? `${count} decision${count !== 1 ? 's' : ''}` : 'No data'}
-                    </span>
-                  </div>
-                </div>
-                <div className="h-2.5 bg-slate-700/60 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all duration-700 ${barColor}`}
-                    style={{ width: barWidth }}
-                  />
-                </div>
-              </div>
-            );
-          })}
-
-          {posture.nistCsfTotalDecisions === 0 && (
-            <div className="text-center py-4 text-slate-500 text-sm">
-              Run tabletop exercises to populate CSF performance data. Exercises with NIST CSF-tagged injects will appear here.
-            </div>
-          )}
-        </div>
       </div>
 
       {/* ── Active Users Modal ───────────────────────────────────────────────── */}

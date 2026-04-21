@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-  calculateCsfPerformance,
   calculateMfaAdoptionPct,
   controlStatus,
   overallStatus,
@@ -33,30 +32,8 @@ describe('security posture helpers', () => {
     });
   });
 
-  it('calculates MFA adoption and NIST CSF averages from measured decisions only', () => {
+  it('calculates MFA adoption percentage safely', () => {
     expect(calculateMfaAdoptionPct(2, 3)).toBe(67);
     expect(calculateMfaAdoptionPct(2, 0)).toBe(0);
-
-    const { performance, counts } = calculateCsfPerformance([
-      { score: 50, inject: { nistCsfFunction: 'DETECT' } },
-      { score: 90, inject: { nistCsfFunction: 'DETECT' } },
-      { score: 100, inject: { nistCsfFunction: 'RECOVER' } },
-      { score: 10, inject: { nistCsfFunction: null } },
-    ]);
-
-    expect(performance).toMatchObject({
-      IDENTIFY: null,
-      PROTECT: null,
-      DETECT: 70,
-      RESPOND: null,
-      RECOVER: 100,
-    });
-    expect(counts).toMatchObject({
-      IDENTIFY: 0,
-      PROTECT: 0,
-      DETECT: 2,
-      RESPOND: 0,
-      RECOVER: 1,
-    });
   });
 });

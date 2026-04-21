@@ -17,7 +17,6 @@ import {
 } from '../services/ai-config';
 import { getOrgConfigForUser, saveOrgConfigForUser } from '../services/org-config';
 import {
-  calculateCsfPerformance,
   calculateMfaAdoptionPct,
   controlStatus,
   overallStatus,
@@ -281,7 +280,6 @@ router.get('/security-posture', requireAuth, requireAdmin, async (req: AuthReque
   const userOrgFilter:    Record<string, unknown> = isSuperAdmin ? {} : { orgId };
   const realUserOrgFilter: Record<string, unknown> = { ...userOrgFilter, id: { not: 'system' } };
   const auditOrgFilter:   Record<string, unknown> = isSuperAdmin ? {} : { user: { orgId } };
-  const sessionOrgFilter: Record<string, unknown> = isSuperAdmin ? {} : { session: { orgId } };
   const registrationRequiresInvite = process.env.REQUIRE_INVITE === 'true';
   const registrationGate = registrationGateStatus(registrationRequiresInvite, process.env.INVITE_CODE);
   const registrationControlled = registrationGate.controlled;
@@ -301,7 +299,6 @@ router.get('/security-posture', requireAuth, requireAdmin, async (req: AuthReque
     activeSessions,
     recentRoleChanges,
     recentMfaDisables,
-    nistDecisions,
     totalAuditEntries,
     latestAuditEntry,
     redisProbe,
@@ -332,10 +329,6 @@ router.get('/security-posture', requireAuth, requireAdmin, async (req: AuthReque
     }),
     prisma.auditLog.count({
       where: { action: 'MFA_DISABLED', timestamp: { gte: d30ago }, ...auditOrgFilter },
-    }),
-    prisma.decision.findMany({
-      where: isSuperAdmin ? {} : sessionOrgFilter,
-      select: { score: true, inject: { select: { nistCsfFunction: true } } },
     }),
     prisma.auditLog.count({ where: auditOrgFilter }),
     prisma.auditLog.findFirst({
@@ -387,9 +380,6 @@ router.get('/security-posture', requireAuth, requireAdmin, async (req: AuthReque
 
   const mfaAdoptionPct = calculateMfaAdoptionPct(mfaUsers, totalUsers);
   const privilegedMfaPct = calculateMfaAdoptionPct(privilegedMfaUsers, privilegedUsers);
-
-  // â”€â”€ NIST CSF Performance â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  const { performance: csfPerformance, counts: csfCounts } = calculateCsfPerformance(nistDecisions);
 
   // â”€â”€ Nginx header evaluation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const nh = nginxProbe.headers;
@@ -1011,9 +1001,6 @@ router.get('/security-posture', requireAuth, requireAdmin, async (req: AuthReque
       nginx:    { reachable: nginxProbe.reachable, latencyMs: nginxProbe.latencyMs, statusCode: nginxProbe.statusCode, headerCount: Object.keys(nginxProbe.headers).length, error: nginxProbe.error },
       postgres: { version: pgStats.version, activeConnections: pgStats.activeConnections, maxConnections: pgStats.maxConnections, dbSizeMb: pgStats.dbSizeMb, error: pgStats.error },
     },
-    nistCsfPerformance:    csfPerformance,
-    nistCsfDecisionCounts: csfCounts,
-    nistCsfTotalDecisions: nistDecisions.length,
   });
 });
 
