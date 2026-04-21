@@ -1,4 +1,5 @@
 import { useState, FormEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { User, Mail, Lock, Shield, Loader2, CheckCircle, AlertTriangle } from 'lucide-react';
 import Layout from '../components/shared/Layout';
 import { useAuthStore } from '../stores/auth';
@@ -34,7 +35,8 @@ function SectionCard({ title, icon, children }: { title: string; icon: React.Rea
 export default function ProfilePage() {
   const user = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
-  const { patch } = useApi();
+  const navigate = useNavigate();
+  const { patch, post } = useApi();
   const toast = useToast();
 
   // Profile form
@@ -49,6 +51,10 @@ export default function ProfilePage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [passwordError, setPasswordError] = useState('');
+  const [mfaCode, setMfaCode] = useState('');
+  const [mfaLoading, setMfaLoading] = useState(false);
+  const [mfaError, setMfaError] = useState('');
+  const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
 
   const handleProfileSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -59,10 +65,10 @@ export default function ProfilePage() {
     setProfileLoading(true);
 
     try {
-      const updated = await patch<typeof user>('/api/users/profile', {
+      const updated = await patch<{ user: NonNullable<typeof user> }>('/api/users/profile', {
         displayName: displayName.trim(),
       });
-      setUser(updated);
+      setUser(updated.user);
       setProfileSuccess(true);
       toast('Profile updated successfully', 'success');
       setTimeout(() => setProfileSuccess(false), 3000);
@@ -70,6 +76,25 @@ export default function ProfilePage() {
       setProfileError((err as Error).message ?? 'Failed to update profile.');
     } finally {
       setProfileLoading(false);
+    }
+  };
+
+  const handleRegenerateRecoveryCodes = async (e: FormEvent) => {
+    e.preventDefault();
+    setMfaError('');
+    setRecoveryCodes([]);
+    setMfaLoading(true);
+    try {
+      const result = await post<{ recoveryCodes: string[] }>('/api/auth/mfa/recovery-codes/regenerate', {
+        code: mfaCode.trim(),
+      });
+      setRecoveryCodes(result.recoveryCodes);
+      setMfaCode('');
+      toast('Recovery codes regenerated', 'success');
+    } catch (err: unknown) {
+      setMfaError((err as Error).message ?? 'Failed to regenerate recovery codes.');
+    } finally {
+      setMfaLoading(false);
     }
   };
 
@@ -253,21 +278,77 @@ export default function ProfilePage() {
 
         {/* MFA */}
         <SectionCard title="Multi-Factor Authentication" icon={<Shield className="w-5 h-5" />}>
-          <div className="flex items-start gap-3 bg-slate-900/60 border border-slate-700 rounded-lg p-4">
-            <Shield className="w-5 h-5 text-slate-500 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-medium text-slate-300">MFA Configuration</p>
-              <p className="text-sm text-slate-500 mt-1">
-                Multi-factor authentication configuration is coming soon. This will allow you to
-                secure your account with an authenticator app or hardware key.
-              </p>
-              {user?.mfaEnabled && (
-                <span className="inline-flex items-center gap-1.5 mt-2 text-xs font-medium text-green-400">
-                  <CheckCircle className="w-3.5 h-3.5" />
-                  MFA is currently enabled on your account
-                </span>
-              )}
+          <div className="space-y-4">
+            <div className="flex items-start gap-3 bg-slate-900/60 border border-slate-700 rounded-lg p-4">
+              <Shield className={`w-5 h-5 flex-shrink-0 mt-0.5 ${user?.mfaEnabled ? 'text-green-400' : 'text-amber-400'}`} />
+              <div>
+                <p className="text-sm font-medium text-slate-300">
+                  {user?.mfaEnabled ? 'MFA is enabled' : 'MFA is not enabled'}
+                </p>
+                <p className="text-sm text-slate-500 mt-1">
+                  CyberTabletop supports TOTP codes from standard authenticator apps.
+                  Facilitators and admins are required to use MFA.
+                </p>
+                {user?.mfaEnabled && (
+                  <span className="inline-flex items-center gap-1.5 mt-2 text-xs font-medium text-green-400">
+                    <CheckCircle className="w-3.5 h-3.5" />
+                    Your account requires MFA at login
+                  </span>
+                )}
+              </div>
             </div>
+
+            {!user?.mfaEnabled ? (
+              <button
+                type="button"
+                onClick={() => navigate('/mfa/setup')}
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-lg px-4 py-2 transition-colors text-sm"
+              >
+                <Shield className="w-4 h-4" />
+                Set Up MFA
+              </button>
+            ) : (
+              <form onSubmit={handleRegenerateRecoveryCodes} className="space-y-3">
+                {mfaError && (
+                  <div className="flex items-start gap-2 bg-red-500/10 border border-red-500/40 rounded-lg px-3 py-2.5">
+                    <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+                    <span className="text-red-400 text-sm">{mfaError}</span>
+                  </div>
+                )}
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                    Authenticator Code
+                  </label>
+                  <input
+                    type="text"
+                    value={mfaCode}
+                    onChange={(event) => setMfaCode(event.target.value)}
+                    placeholder="123456"
+                    className="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2.5 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/50 transition-colors text-sm"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={mfaLoading || !mfaCode.trim()}
+                  className="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-700/50 disabled:cursor-not-allowed text-slate-200 font-medium rounded-lg px-4 py-2 transition-colors text-sm"
+                >
+                  {mfaLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                  Regenerate Recovery Codes
+                </button>
+                {recoveryCodes.length > 0 && (
+                  <div className="bg-slate-900 border border-slate-700 rounded-lg p-4">
+                    <p className="text-sm font-medium text-slate-300 mb-2">
+                      New recovery codes. Store them now; they will not be shown again.
+                    </p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {recoveryCodes.map((code) => (
+                        <code key={code} className="text-sm text-slate-200 font-mono">{code}</code>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </form>
+            )}
           </div>
         </SectionCard>
       </div>

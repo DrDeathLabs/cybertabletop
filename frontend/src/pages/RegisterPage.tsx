@@ -4,6 +4,7 @@ import { Shield, Mail, Lock, User, Loader2, CheckCircle, XCircle } from 'lucide-
 import { useAuthStore } from '../stores/auth';
 
 interface RegisterResponse {
+  mfaSetupRequired?: boolean;
   user: {
     id: string;
     email: string;
@@ -96,6 +97,10 @@ export default function RegisterPage() {
 
       const typed = data as RegisterResponse;
       setUser(typed.user);
+      if (typed.mfaSetupRequired) {
+        navigate('/mfa/setup', { replace: true });
+        return;
+      }
       navigate('/dashboard', { replace: true });
     } catch {
       setError('Network error. Please try again.');

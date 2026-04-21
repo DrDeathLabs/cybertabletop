@@ -25,6 +25,7 @@ nginx/ssl/*
 # Logs
 *.log
 logs/
+backups/
 
 # Docker volumes (local)
 .docker/

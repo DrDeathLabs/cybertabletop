@@ -3,6 +3,21 @@ import jwt from 'jsonwebtoken';
 import { UserRole } from '@prisma/client';
 import { requireAuth, requireRole } from './auth';
 
+vi.mock('../services/db', () => ({
+  prisma: {
+    user: {
+      findUnique: vi.fn(async () => ({
+        id: 'user-1',
+        email: 'facilitator@example.com',
+        role: UserRole.FACILITATOR,
+        orgId: 'org-1',
+        displayName: 'Facilitator',
+        mfaEnabled: true,
+      })),
+    },
+  },
+}));
+
 const JWT_SECRET = 'test-jwt-secret-with-more-than-thirty-two-characters';
 
 function mockResponse() {
@@ -14,7 +29,7 @@ function mockResponse() {
 }
 
 describe('requireAuth', () => {
-  it('accepts a valid bearer access token and populates req.user', () => {
+  it('accepts a valid bearer access token and populates req.user', async () => {
     process.env.JWT_SECRET = JWT_SECRET;
     const token = jwt.sign(
       {
@@ -22,6 +37,7 @@ describe('requireAuth', () => {
         email: 'facilitator@example.com',
         role: UserRole.FACILITATOR,
         orgId: 'org-1',
+        mfaVerified: true,
       },
       JWT_SECRET,
       { issuer: 'cybertabletop', audience: 'cybertabletop-api', expiresIn: '15m' },
@@ -30,7 +46,7 @@ describe('requireAuth', () => {
     const res = mockResponse() as any;
     const next = vi.fn();
 
-    requireAuth(req, res, next);
+    await requireAuth(req, res, next);
 
     expect(next).toHaveBeenCalledOnce();
     expect(req.user).toMatchObject({
@@ -41,7 +57,7 @@ describe('requireAuth', () => {
     });
   });
 
-  it('rejects missing and invalid tokens', () => {
+  it('rejects missing and invalid tokens', async () => {
     process.env.JWT_SECRET = JWT_SECRET;
     const missingReq = { headers: {}, cookies: {} } as any;
     const invalidReq = {
@@ -51,8 +67,8 @@ describe('requireAuth', () => {
     const missingRes = mockResponse() as any;
     const invalidRes = mockResponse() as any;
 
-    requireAuth(missingReq, missingRes, vi.fn());
-    requireAuth(invalidReq, invalidRes, vi.fn());
+    await requireAuth(missingReq, missingRes, vi.fn());
+    await requireAuth(invalidReq, invalidRes, vi.fn());
 
     expect(missingRes.status).toHaveBeenCalledWith(401);
     expect(missingRes.json).toHaveBeenCalledWith({ error: 'Authentication required' });

@@ -4,6 +4,9 @@ import { Shield, Mail, Lock, Loader2, ExternalLink } from 'lucide-react';
 import { useAuthStore } from '../stores/auth';
 
 interface LoginResponse {
+  mfaRequired?: boolean;
+  mfaSetupRequired?: boolean;
+  challengeToken?: string;
   user: {
     id: string;
     email: string;
@@ -65,7 +68,17 @@ export default function LoginPage() {
       }
 
       const typed = data as LoginResponse;
+      if (typed.mfaRequired && typed.challengeToken) {
+        sessionStorage.setItem('cybertabletop-mfa-challenge', typed.challengeToken);
+        navigate('/mfa/challenge', { replace: true });
+        return;
+      }
+
       setUser(typed.user);
+      if (typed.mfaSetupRequired) {
+        navigate('/mfa/setup', { replace: true });
+        return;
+      }
       navigate('/dashboard', { replace: true });
     } catch {
       setError('Network error. Please try again.');

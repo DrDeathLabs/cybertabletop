@@ -11,6 +11,9 @@ declare global {
       role: UserRole;
       orgId: string | null;
       displayName: string;
+      mfaEnabled?: boolean;
+      mfaVerified?: boolean;
+      mfaSetupPending?: boolean;
     }
   }
 }

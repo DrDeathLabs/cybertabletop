@@ -15,6 +15,11 @@ export interface TestUser {
   password: string;
   role?: 'SUPER_ADMIN' | 'ORG_ADMIN' | 'FACILITATOR' | 'PLAYER';
   orgId?: string | null;
+  mfaEnabled?: boolean;
+}
+
+interface CreateUserOptions {
+  mfaEnabled?: boolean;
 }
 
 interface SsoStatus {
@@ -147,7 +152,11 @@ export async function newAuthenticatedPage(browser: Browser, user: TestUser): Pr
 
   const page = await context.newPage();
   await page.goto('/dashboard');
-  await expect(page.getByRole('heading', { name: /Welcome back,/ })).toBeVisible();
+  if (isPrivilegedRole(user.role) && user.mfaEnabled !== true) {
+    await expect(page).toHaveURL(/\/mfa\/setup$/);
+  } else {
+    await expect(page.getByRole('heading', { name: /Welcome back,/ })).toBeVisible();
+  }
   return page;
 }
 
@@ -173,8 +182,14 @@ export async function promoteUser(
 export async function createUserWithRole(
   role: 'SUPER_ADMIN' | 'ORG_ADMIN' | 'FACILITATOR' | 'PLAYER',
   label = role,
+  options: CreateUserOptions = {},
 ): Promise<TestUser> {
-  const user = { ...uniqueUser(label), password: seededPassword, role };
+  const user = {
+    ...uniqueUser(label),
+    password: seededPassword,
+    role,
+    mfaEnabled: options.mfaEnabled ?? role !== 'PLAYER',
+  };
   user.id = await insertUser(user, role);
   return user;
 }
@@ -184,15 +199,17 @@ async function insertUser(
   role: 'SUPER_ADMIN' | 'ORG_ADMIN' | 'FACILITATOR' | 'PLAYER',
 ): Promise<string> {
   const id = randomUUID();
+  const mfaEnabled = user.mfaEnabled === true;
   const sql = `
-    INSERT INTO "User" ("id", "email", "displayName", "role", "passwordHash", "mfaEnabled", "failedAttempts", "createdAt", "updatedAt")
+    INSERT INTO "User" ("id", "email", "displayName", "role", "passwordHash", "mfaEnabled", "mfaVerifiedAt", "failedAttempts", "createdAt", "updatedAt")
     VALUES (
       '${sqlLiteral(id)}',
       '${sqlLiteral(user.email)}',
       '${sqlLiteral(user.displayName)}',
       '${role}',
       '${sqlLiteral(seededPasswordHash)}',
-      false,
+      ${mfaEnabled ? 'true' : 'false'},
+      ${mfaEnabled ? 'NOW()' : 'NULL'},
       0,
       NOW(),
       NOW()
@@ -234,7 +251,7 @@ function runSql(sql: string, container = envValue('E2E_POSTGRES_CONTAINER', 'cyb
   ]);
 }
 
-function authStoreUser(user: TestUser): Required<Pick<TestUser, 'id' | 'email' | 'displayName' | 'role'>> & { orgId?: string | null } {
+function authStoreUser(user: TestUser): Required<Pick<TestUser, 'id' | 'email' | 'displayName' | 'role'>> & { orgId?: string | null; mfaEnabled?: boolean } {
   if (!user.id || !user.role) {
     throw new Error('Seeded E2E users must include id and role before authentication.');
   }
@@ -245,6 +262,7 @@ function authStoreUser(user: TestUser): Required<Pick<TestUser, 'id' | 'email' |
     displayName: user.displayName,
     role: user.role,
     orgId: user.orgId ?? null,
+    mfaEnabled: user.mfaEnabled === true,
   };
 }
 
@@ -261,6 +279,8 @@ function signAccessToken(user: TestUser): string {
     role: authUser.role,
     orgId: authUser.orgId ?? null,
     displayName: authUser.displayName,
+    mfaVerified: user.mfaEnabled === true,
+    mfaSetupPending: false,
     iat: now,
     exp: now + 15 * 60,
     iss: 'cybertabletop',
@@ -278,4 +298,50 @@ function signAccessToken(user: TestUser): string {
 
 function base64Url(value: string): string {
   return Buffer.from(value).toString('base64url');
+}
+
+export function totpCode(secret: string, timestamp = Date.now()): string {
+  const key = base32Decode(secret);
+  const counter = Math.floor(timestamp / 30_000);
+  const buffer = Buffer.alloc(8);
+  buffer.writeBigUInt64BE(BigInt(counter));
+
+  const digest = createHmac('sha1', key).update(buffer).digest();
+  const offset = digest[digest.length - 1] & 0x0f;
+  const binary =
+    ((digest[offset] & 0x7f) << 24) |
+    ((digest[offset + 1] & 0xff) << 16) |
+    ((digest[offset + 2] & 0xff) << 8) |
+    (digest[offset + 3] & 0xff);
+
+  return String(binary % 1_000_000).padStart(6, '0');
+}
+
+function base32Decode(value: string): Buffer {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  const normalized = value.replace(/=+$/g, '').replace(/\s+/g, '').toUpperCase();
+  const bytes: number[] = [];
+  let bits = 0;
+  let bitCount = 0;
+
+  for (const char of normalized) {
+    const index = alphabet.indexOf(char);
+    if (index === -1) {
+      throw new Error(`Invalid base32 character in TOTP secret: ${char}`);
+    }
+
+    bits = (bits << 5) | index;
+    bitCount += 5;
+
+    if (bitCount >= 8) {
+      bitCount -= 8;
+      bytes.push((bits >> bitCount) & 0xff);
+    }
+  }
+
+  return Buffer.from(bytes);
+}
+
+function isPrivilegedRole(role: TestUser['role']): boolean {
+  return role === 'SUPER_ADMIN' || role === 'ORG_ADMIN' || role === 'FACILITATOR';
 }

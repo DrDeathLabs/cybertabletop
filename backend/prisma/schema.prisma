@@ -98,6 +98,8 @@ model User {
   ssoSubject      String?   // external user ID
   mfaSecret       String?   // TOTP secret (encrypted)
   mfaEnabled      Boolean   @default(false)
+  mfaVerifiedAt   DateTime?
+  mfaRecoveryCodes String[] @default([])
   failedAttempts  Int       @default(0)
   lockedUntil     DateTime?
   lastLoginAt     DateTime?

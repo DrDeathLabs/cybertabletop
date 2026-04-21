@@ -80,17 +80,11 @@ export function setupAuth(app: Express): void {
             return done(null, false, { message: 'Invalid credentials' });
           }
 
-          // Successful login - reset failed attempts
+          // Password validated. Token issuance and final login audit happen in the
+          // route so MFA-required users do not receive a completed login before MFA.
           await prisma.user.update({
             where: { id: user.id },
-            data: { failedAttempts: 0, lockedUntil: null, lastLoginAt: new Date() },
-          });
-
-          await audit({
-            userId: user.id,
-            action: 'USER_LOGIN',
-            metadata: { method: 'local' },
-            ipAddress: ip,
+            data: { failedAttempts: 0, lockedUntil: null },
           });
 
           return done(null, user);

@@ -12,8 +12,16 @@ function hashToken(token: string): string {
   return crypto.createHash('sha256').update(token).digest('hex');
 }
 
-function signAccessToken(user: User): string {
+interface AccessTokenOptions {
+  mfaVerified?: boolean;
+  mfaSetupPending?: boolean;
+}
+
+function signAccessToken(user: User, options: AccessTokenOptions = {}): string {
   const secret = process.env.JWT_SECRET!;
+  const privileged = ['SUPER_ADMIN', 'ORG_ADMIN', 'FACILITATOR'].includes(user.role);
+  const mfaVerified = options.mfaVerified ?? user.mfaEnabled;
+  const mfaSetupPending = options.mfaSetupPending ?? (privileged && !user.mfaEnabled);
 
   return jwt.sign(
     {
@@ -21,6 +29,9 @@ function signAccessToken(user: User): string {
       email: user.email,
       role: user.role,
       orgId: user.orgId,
+      displayName: user.displayName,
+      mfaVerified,
+      mfaSetupPending,
     },
     secret,
     { expiresIn: '15m', issuer: ISSUER, audience: AUDIENCE }
@@ -37,8 +48,8 @@ function signRefreshToken(user: User, jti: string): string {
   );
 }
 
-export async function issueTokens(user: User): Promise<{ accessToken: string; refreshToken: string }> {
-  const accessToken = signAccessToken(user);
+export async function issueTokens(user: User, options: AccessTokenOptions = {}): Promise<{ accessToken: string; refreshToken: string }> {
+  const accessToken = signAccessToken(user, options);
   const jti = crypto.randomUUID();
   const refreshToken = signRefreshToken(user, jti);
 
@@ -119,6 +130,8 @@ export function verifyAccessToken(token: string): {
   role: User['role'];
   orgId: string | null;
   displayName?: string;
+  mfaVerified?: boolean;
+  mfaSetupPending?: boolean;
 } {
   return jwt.verify(token, process.env.JWT_SECRET!, {
     issuer: ISSUER,
@@ -129,5 +142,32 @@ export function verifyAccessToken(token: string): {
     role: User['role'];
     orgId: string | null;
     displayName?: string;
+    mfaVerified?: boolean;
+    mfaSetupPending?: boolean;
   };
+}
+
+export function issueMfaChallengeToken(user: User): string {
+  return jwt.sign(
+    {
+      sub: user.id,
+      email: user.email,
+      purpose: 'mfa',
+    },
+    process.env.JWT_SECRET!,
+    { expiresIn: '5m', issuer: ISSUER, audience: AUDIENCE }
+  );
+}
+
+export function verifyMfaChallengeToken(token: string): { sub: string; email: string; purpose: 'mfa' } {
+  const payload = jwt.verify(token, process.env.JWT_SECRET!, {
+    issuer: ISSUER,
+    audience: AUDIENCE,
+  }) as { sub: string; email: string; purpose?: string };
+
+  if (payload.purpose !== 'mfa') {
+    throw new Error('Invalid MFA challenge token');
+  }
+
+  return { sub: payload.sub, email: payload.email, purpose: 'mfa' };
 }

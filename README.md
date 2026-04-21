@@ -216,6 +216,7 @@ page in GitHub and make the packages public.
 
 - [Installation Guide](docs/INSTALLATION.md)
 - [User Guide](docs/USER_GUIDE.md)
+- [Production Readiness](docs/PRODUCTION.md)
 - [Security Policy](SECURITY.md)
 - [Commercial Use Terms](COMMERCIAL.md)
 - [Contributing](CONTRIBUTING.md)

@@ -295,6 +295,8 @@ router.get('/security-posture', requireAuth, requireAdmin, async (req: AuthReque
     totalUsers,
     lockedUsers,
     mfaUsers,
+    privilegedUsers,
+    privilegedMfaUsers,
     failedLogins24h,
     activeSessions,
     recentRoleChanges,
@@ -318,6 +320,8 @@ router.get('/security-posture', requireAuth, requireAdmin, async (req: AuthReque
     prisma.user.count({ where: realUserOrgFilter }),
     prisma.user.count({ where: { ...realUserOrgFilter, lockedUntil: { gt: now } } }),
     prisma.user.count({ where: { ...realUserOrgFilter, mfaEnabled: true } }),
+    prisma.user.count({ where: { ...realUserOrgFilter, role: { in: ['SUPER_ADMIN', 'ORG_ADMIN', 'FACILITATOR'] } } }),
+    prisma.user.count({ where: { ...realUserOrgFilter, role: { in: ['SUPER_ADMIN', 'ORG_ADMIN', 'FACILITATOR'] }, mfaEnabled: true } }),
     prisma.auditLog.count({
       where: { action: 'USER_LOGIN_FAILED', timestamp: { gte: h24ago }, ...auditOrgFilter },
     }),
@@ -382,6 +386,7 @@ router.get('/security-posture', requireAuth, requireAdmin, async (req: AuthReque
     : 0;
 
   const mfaAdoptionPct = calculateMfaAdoptionPct(mfaUsers, totalUsers);
+  const privilegedMfaPct = calculateMfaAdoptionPct(privilegedMfaUsers, privilegedUsers);
 
   // â”€â”€ NIST CSF Performance â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const { performance: csfPerformance, counts: csfCounts } = calculateCsfPerformance(nistDecisions);
@@ -561,20 +566,18 @@ router.get('/security-posture', requireAuth, requireAdmin, async (req: AuthReque
       nistControlText:
         'Manage system authenticators by: verifying the identity of users prior to distributing authenticators; establishing initial authenticator content; ensuring authenticators have sufficient strength of mechanism; establishing and implementing administrative procedures for initial authenticator distribution, for lost or compromised authenticators, and for revoking authenticators when no longer required.',
       description:
-        'Passwords are hashed with bcrypt (cost factor 12). MFA enrollment fields are tracked, but internet-facing deployments should treat low MFA adoption as a readiness gap until enforced MFA is implemented or SSO MFA is required upstream.',
-      status: controlStatus(mfaAdoptionPct >= 80, mfaAdoptionPct >= 40),
-      detail: `MFA adoption: ${mfaAdoptionPct}% (${mfaUsers} of ${totalUsers} users enrolled) Â· Passwords: bcrypt cost=12 Â· Local password policy: 12+ chars with upper/lower/number/symbol Â· SSO MFA should be enforced by the identity provider`,
-      metric: mfaAdoptionPct,
+        'Passwords are hashed with bcrypt (cost factor 12). TOTP MFA is enforced for privileged roles and optional for players. TOTP secrets are encrypted at rest and recovery codes are stored only as bcrypt hashes.',
+      status: controlStatus(privilegedUsers === privilegedMfaUsers, privilegedMfaPct >= 80),
+      detail: `Privileged MFA coverage: ${privilegedMfaPct}% (${privilegedMfaUsers} of ${privilegedUsers} admin/facilitator users enrolled) Â· Overall MFA adoption: ${mfaAdoptionPct}% (${mfaUsers} of ${totalUsers} users) Â· Passwords: bcrypt cost=12 Â· TOTP secrets encrypted with AES-256-GCM Â· Recovery codes hashed`,
+      metric: privilegedMfaPct,
       components: ['Application', 'PostgreSQL', 'bcrypt'],
       evidenceSource:
-        'Live DB query: human users with mfaEnabled=true divided by total human users. Static code audit: auth routes use bcrypt.compare and bcrypt.hash with cost 12 for local password verification and storage.',
+        'Live DB query: privileged human users with role in SUPER_ADMIN/ORG_ADMIN/FACILITATOR and mfaEnabled=true divided by total privileged human users. Static code audit: auth routes enforce TOTP MFA for privileged roles; MFA secrets are AES-GCM encrypted and recovery codes are bcrypt hashed.',
       complianceNarrative:
-        'Passwords are never stored in plaintext. bcrypt with cost factor 12 provides strong one-way hashing resistant to offline brute-force attacks. The dashboard reports MFA adoption from stored user fields, but this build does not yet provide a complete local MFA enrollment and enforcement flow. Internet-facing deployments should enforce MFA through OIDC/SSO or add local MFA enforcement before relying on this control as fully implemented.',
+        'Passwords are never stored in plaintext. bcrypt with cost factor 12 provides strong one-way hashing resistant to offline brute-force attacks. Privileged users must complete TOTP enrollment before accessing application features, and accounts with MFA enabled must complete a second-factor challenge before access and refresh tokens are issued. TOTP secrets are encrypted with an environment-provided MFA_ENCRYPTION_KEY and recovery codes are shown once, then stored only as bcrypt hashes.',
       remediation:
-        mfaAdoptionPct < 40
-          ? 'Critical: MFA adoption is below 40%. Communicate to all users to enroll in MFA immediately. Consider enforcing MFA as a login requirement for ORG_ADMIN and SUPER_ADMIN accounts first. Review users without MFA in the Users tab.'
-          : mfaAdoptionPct < 80
-          ? 'MFA adoption below 80% target. Send reminders to users who have not enabled MFA. Consider a mandatory enrollment deadline.'
+        privilegedUsers !== privilegedMfaUsers
+          ? 'Privileged MFA coverage is incomplete. Review admin and facilitator accounts in the Users tab. Users without MFA will be forced into setup at next login; reset MFA only for verified lockout cases.'
           : null,
     },
     {
@@ -973,6 +976,9 @@ router.get('/security-posture', requireAuth, requireAdmin, async (req: AuthReque
       lockedUsers,
       mfaAdoptionPct,
       mfaEnabledUsers: mfaUsers,
+      privilegedUsers,
+      privilegedMfaUsers,
+      privilegedMfaPct,
       failedLogins24h,
       activeSessions,
       activeUsersList,

@@ -128,6 +128,9 @@ interface SecurityPosture {
     lockedUsers: number;
     mfaAdoptionPct: number;
     mfaEnabledUsers: number;
+    privilegedUsers?: number;
+    privilegedMfaUsers?: number;
+    privilegedMfaPct?: number;
     failedLogins24h: number;
     activeSessions: number;
     activeUsersList: ActiveUserEntry[];
@@ -673,6 +676,9 @@ function SecurityDashboardTab({ onSwitchToAudit }: { onSwitchToAudit?: (action: 
   const passCount = controls.filter((c) => c.status === 'PASS').length;
   const warnCount = controls.filter((c) => c.status === 'WARN').length;
   const failCount = controls.filter((c) => c.status === 'FAIL').length;
+  const mfaPct = metrics.privilegedMfaPct ?? metrics.mfaAdoptionPct;
+  const mfaEnabledCount = metrics.privilegedMfaUsers ?? metrics.mfaEnabledUsers;
+  const mfaUserCount = metrics.privilegedUsers ?? metrics.totalUsers;
 
   return (
     <div className="space-y-6">
@@ -814,18 +820,18 @@ function SecurityDashboardTab({ onSwitchToAudit }: { onSwitchToAudit?: (action: 
         {/* MFA Adoption → IA-5 */}
         <button
           onClick={() => setSelectedControl(controls.find(c => c.id === 'IA-5') ?? null)}
-          className={`rounded-xl p-4 border text-left transition-all hover:brightness-110 group ${metrics.mfaAdoptionPct >= 80 ? 'bg-slate-900/60 border-slate-700/50' : metrics.mfaAdoptionPct >= 40 ? 'bg-yellow-500/5 border-yellow-500/30' : 'bg-red-500/5 border-red-500/30'}`}
+          className={`rounded-xl p-4 border text-left transition-all hover:brightness-110 group ${mfaPct >= 80 ? 'bg-slate-900/60 border-slate-700/50' : mfaPct >= 40 ? 'bg-yellow-500/5 border-yellow-500/30' : 'bg-red-500/5 border-red-500/30'}`}
         >
           <div className="flex items-start justify-between">
             <UserCheck className="w-5 h-5 text-slate-500 mt-0.5" />
-            <span className={`text-[10px] font-mono group-hover:text-slate-400 ${metrics.mfaAdoptionPct >= 80 ? 'text-slate-600' : metrics.mfaAdoptionPct >= 40 ? 'text-yellow-500/70' : 'text-red-500/70'}`}>
+            <span className={`text-[10px] font-mono group-hover:text-slate-400 ${mfaPct >= 80 ? 'text-slate-600' : mfaPct >= 40 ? 'text-yellow-500/70' : 'text-red-500/70'}`}>
               IA-5 ›
             </span>
           </div>
-          <p className={`text-2xl font-bold mt-2 ${metrics.mfaAdoptionPct >= 80 ? 'text-white' : metrics.mfaAdoptionPct >= 40 ? 'text-yellow-400' : 'text-red-400'}`}>
-            {metrics.mfaAdoptionPct}%
+          <p className={`text-2xl font-bold mt-2 ${mfaPct >= 80 ? 'text-white' : mfaPct >= 40 ? 'text-yellow-400' : 'text-red-400'}`}>
+            {mfaPct}%
           </p>
-          <p className="text-xs text-slate-500 mt-0.5">MFA Adoption ({metrics.mfaEnabledUsers}/{metrics.totalUsers})</p>
+          <p className="text-xs text-slate-500 mt-0.5">Privileged MFA ({mfaEnabledCount}/{mfaUserCount})</p>
         </button>
 
         {/* Active Users (24h) → modal list */}
@@ -1625,13 +1631,15 @@ function AuditLogTab({ initialAction = '' }: { initialAction?: string }) {
 // ─── Users Tab ────────────────────────────────────────────────────────────────
 
 function UsersTab() {
-  const { get, patch } = useApi();
+  const { get, patch, post } = useApi();
   const toast = useToast();
+  const currentUser = useAuthStore((s) => s.user);
 
   const [users, setUsers]         = useState<UserRecord[]>([]);
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState('');
   const [updatingRole, setUpdatingRole] = useState<string | null>(null);
+  const [resettingMfa, setResettingMfa] = useState<string | null>(null);
 
   useEffect(() => {
     get<{ users: UserRecord[] }>('/api/users')
@@ -1653,6 +1661,25 @@ function UsersTab() {
       toast((err as Error).message ?? 'Failed to update role', 'error');
     } finally {
       setUpdatingRole(null);
+    }
+  };
+
+  const handleMfaReset = async (userId: string) => {
+    const target = users.find((user) => user.id === userId);
+    if (!target) return;
+    if (!window.confirm(`Reset MFA for ${target.displayName}? They will be required to set it up again at next login if their role requires MFA.`)) return;
+
+    setResettingMfa(userId);
+    try {
+      await post(`/api/users/${userId}/mfa-reset`, {});
+      setUsers((prev) => prev.map((user) => (
+        user.id === userId ? { ...user, mfaEnabled: false } : user
+      )));
+      toast('MFA reset successfully', 'success');
+    } catch (err: unknown) {
+      toast((err as Error).message ?? 'Failed to reset MFA', 'error');
+    } finally {
+      setResettingMfa(null);
     }
   };
 
@@ -1684,6 +1711,7 @@ function UsersTab() {
             <th className="text-left pb-3 pr-4 hidden sm:table-cell">MFA</th>
             <th className="text-left pb-3 pr-4 hidden lg:table-cell">Last Login</th>
             <th className="text-left pb-3 hidden md:table-cell">Joined</th>
+            <th className="text-right pb-3">Actions</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-700/50">
@@ -1746,6 +1774,22 @@ function UsersTab() {
                 </td>
                 <td className="py-3 text-slate-500 hidden md:table-cell">
                   {fmt(user.createdAt)}
+                </td>
+                <td className="py-3 text-right">
+                  <button
+                    type="button"
+                    onClick={() => handleMfaReset(user.id)}
+                    disabled={!user.mfaEnabled || resettingMfa === user.id || currentUser?.id === user.id}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 disabled:text-slate-600 disabled:cursor-not-allowed text-xs text-slate-200 transition-colors"
+                    title={currentUser?.id === user.id ? 'Use Profile to manage your own MFA' : 'Reset MFA'}
+                  >
+                    {resettingMfa === user.id ? (
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                    ) : (
+                      <RotateCcw className="w-3 h-3" />
+                    )}
+                    Reset MFA
+                  </button>
                 </td>
               </tr>
             );

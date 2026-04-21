@@ -30,6 +30,11 @@ if (process.env.JWT_SECRET!.length < 32) {
   process.exit(1);
 }
 
+if (process.env.NODE_ENV === 'production' && !process.env.MFA_ENCRYPTION_KEY) {
+  console.error('[STARTUP ERROR] MFA_ENCRYPTION_KEY is required in production for encrypted TOTP MFA secrets.');
+  process.exit(1);
+}
+
 const app = express();
 const server = http.createServer(app);
 

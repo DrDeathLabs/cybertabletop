@@ -46,5 +46,5 @@ USER appuser
 
 EXPOSE 3001
 
-# Start the application (run db:push manually on first deploy)
-CMD ["node", "dist/index.js"]
+# Apply migrations, then start the application.
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/index.js"]

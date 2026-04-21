@@ -19,10 +19,17 @@ import AdminPage from './pages/AdminPage';
 import ProfilePage from './pages/ProfilePage';
 import SessionsPage from './pages/SessionsPage';
 import OnboardingPage from './pages/OnboardingPage';
+import MfaSetupPage from './pages/MfaSetupPage';
+import MfaChallengePage from './pages/MfaChallengePage';
+
+const MFA_REQUIRED_ROLES = ['SUPER_ADMIN', 'ORG_ADMIN', 'FACILITATOR'];
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const user = useAuthStore((s) => s.user);
   if (!user) return <Navigate to="/login" replace />;
+  if (MFA_REQUIRED_ROLES.includes(user.role) && !user.mfaEnabled && window.location.pathname !== '/mfa/setup') {
+    return <Navigate to="/mfa/setup" replace />;
+  }
   return <>{children}</>;
 }
 
@@ -52,12 +59,14 @@ export default function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/auth/callback" element={<AuthCallbackPage />} />
+        <Route path="/mfa/challenge" element={<MfaChallengePage />} />
         <Route path="/join" element={<JoinPage />} />
         <Route path="/join/:code" element={<JoinPage />} />
 
         {/* Protected */}
         <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+        <Route path="/mfa/setup" element={<ProtectedRoute><MfaSetupPage /></ProtectedRoute>} />
         <Route path="/game/:sessionId" element={<ProtectedRoute><GamePage /></ProtectedRoute>} />
         <Route path="/debrief/:sessionId" element={<ProtectedRoute><DebriefPage /></ProtectedRoute>} />
 

@@ -6,7 +6,7 @@ export interface User {
   email: string;
   displayName: string;
   role: 'SUPER_ADMIN' | 'ORG_ADMIN' | 'FACILITATOR' | 'PLAYER';
-  orgId?: string;
+  orgId?: string | null;
   mfaEnabled?: boolean;
 }
 

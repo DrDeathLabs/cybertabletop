@@ -34,9 +34,19 @@ const joinLimiter = rateLimit({
   message: { error: 'Too many session join attempts.' },
 });
 
+const mfaLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many MFA attempts. Please try again later.' },
+});
+
 export function setupRateLimit(app: Express): void {
   app.use('/api/auth/login', authLimiter);
   app.use('/api/auth/register', authLimiter);
+  app.use('/api/auth/mfa/verify-login', mfaLimiter);
+  app.use('/api/auth/mfa/setup/verify', mfaLimiter);
   app.use('/api/sessions/join', joinLimiter);
   app.use('/api/', apiLimiter);
 }

@@ -47,8 +47,7 @@ router.patch('/profile', requireAuth, async (req: AuthRequest, res: Response) =>
   res.json({ user });
 });
 
-// POST /api/users/change-password
-router.post('/change-password', requireAuth, async (req: AuthRequest, res: Response) => {
+async function changePasswordHandler(req: AuthRequest, res: Response) {
   const schema = z.object({
     currentPassword: z.string(),
     newPassword: z
@@ -82,7 +81,11 @@ router.post('/change-password', requireAuth, async (req: AuthRequest, res: Respo
   await prisma.user.update({ where: { id: user.id }, data: { passwordHash: newHash } });
   await audit({ userId: user.id, action: 'PASSWORD_CHANGED' });
   res.json({ ok: true });
-});
+}
+
+// POST/PATCH /api/users/change-password
+router.post('/change-password', requireAuth, changePasswordHandler);
+router.patch('/change-password', requireAuth, changePasswordHandler);
 
 // GET /api/users (admin only)
 router.get('/', requireAuth, requireAdmin, async (req: AuthRequest, res: Response) => {
@@ -169,6 +172,48 @@ router.patch('/:id/role', requireAuth, requireAdmin, async (req: AuthRequest, re
   });
 
   res.json({ user });
+});
+
+// POST /api/users/:id/mfa-reset (admin only)
+router.post('/:id/mfa-reset', requireAuth, requireAdmin, async (req: AuthRequest, res: Response) => {
+  if (req.params.id === 'system') {
+    res.status(403).json({ error: 'The built-in system account cannot be modified' });
+    return;
+  }
+
+  if (req.params.id === req.user!.id) {
+    res.status(403).json({ error: 'You cannot reset your own MFA from the admin panel' });
+    return;
+  }
+
+  const targetUser = await prisma.user.findUnique({
+    where: { id: req.params.id },
+    select: { id: true, orgId: true },
+  });
+
+  if (!targetUser) {
+    res.status(404).json({ error: 'User not found' });
+    return;
+  }
+
+  if (req.user!.role === 'ORG_ADMIN' && targetUser.orgId !== req.user!.orgId) {
+    res.status(403).json({ error: 'Cannot modify users outside your organization' });
+    return;
+  }
+
+  await prisma.user.update({
+    where: { id: req.params.id },
+    data: { mfaEnabled: false, mfaSecret: null, mfaVerifiedAt: null, mfaRecoveryCodes: [] },
+  });
+
+  await audit({
+    userId: req.user!.id,
+    action: 'MFA_DISABLED',
+    resource: req.params.id,
+    metadata: { reason: 'admin_reset' },
+  });
+
+  res.json({ ok: true });
 });
 
 export default router;
