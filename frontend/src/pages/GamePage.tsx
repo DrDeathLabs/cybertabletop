@@ -1141,7 +1141,6 @@ export default function GamePage() {
       }
       if (s.players) {
         setPlayers(
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           s.players.map((p: any) => ({
             userId: p.userId,
             // Prisma include nests displayName under p.user
@@ -1161,7 +1160,7 @@ export default function GamePage() {
     } finally {
       setSessionLoaded(true);
     }
-  }, [sessionId, setSession, setPlayers, presentInject, setScenarioMode, setAiPreviewMode]);
+  }, [sessionId, setSession, setPlayers, presentInject, setScenarioMode, setAiPreviewMode, setTotalRounds]);
 
   useEffect(() => {
     if (!sessionId || initialized.current) return;

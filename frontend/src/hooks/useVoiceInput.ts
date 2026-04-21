@@ -14,7 +14,6 @@ export interface UseVoiceInputResult {
   error: string | null;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyRecognition = any;
 
 export function useVoiceInput({ onTranscript, lang = 'en-US' }: UseVoiceInputOptions): UseVoiceInputResult {
@@ -23,10 +22,8 @@ export function useVoiceInput({ onTranscript, lang = 'en-US' }: UseVoiceInputOpt
   const [error, setError] = useState<string | null>(null);
   const recognitionRef = useRef<AnyRecognition>(null);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const SpeechRecognitionAPI: (new () => AnyRecognition) | undefined =
     typeof window !== 'undefined'
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ? ((window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition)
       : undefined;
 
@@ -57,7 +54,6 @@ export function useVoiceInput({ onTranscript, lang = 'en-US' }: UseVoiceInputOpt
 
     recognition.onstart = () => setIsListening(true);
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     recognition.onresult = (event: any) => {
       let interim = '';
       let final = '';
@@ -76,7 +72,6 @@ export function useVoiceInput({ onTranscript, lang = 'en-US' }: UseVoiceInputOpt
       }
     };
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     recognition.onerror = (event: any) => {
       const msg =
         event.error === 'not-allowed'

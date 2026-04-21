@@ -116,12 +116,13 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5">
+              <label htmlFor="login-email" className="block text-sm font-medium text-slate-300 mb-1.5">
                 Email address
               </label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                 <input
+                  id="login-email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -134,12 +135,13 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5">
+              <label htmlFor="login-password" className="block text-sm font-medium text-slate-300 mb-1.5">
                 Password
               </label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                 <input
+                  id="login-password"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -162,7 +164,7 @@ export default function LoginPage() {
                   Signing in...
                 </>
               ) : (
-                'Login'
+                'Sign in'
               )}
             </button>
           </form>
@@ -182,7 +184,7 @@ export default function LoginPage() {
                 className="w-full flex items-center justify-center gap-2 bg-slate-700 hover:bg-slate-600 text-slate-200 font-medium rounded-lg py-2.5 transition-colors text-sm border border-slate-600"
               >
                 <ExternalLink className="w-4 h-4" />
-                Login with {ssoStatus.providerName ?? 'SSO'}
+                Sign in with {ssoStatus.providerName ?? 'SSO'}
               </button>
             </>
           )}

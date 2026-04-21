@@ -16,14 +16,19 @@ export function calculateScore(
   injectStartMs: number,
   config: ScoringConfig
 ): ScoreResult {
-  const baseScore = scoreWeight; // 0-100
+  const baseScore = clamp(Math.round(scoreWeight), 0, 100);
 
   let speedBonus = 0;
   if (config.speedBonusEnabled) {
-    const elapsedSeconds = (decisionTimestampMs - injectStartMs) / 1000;
-    if (elapsedSeconds <= config.speedBonusDecaySeconds) {
-      const decay = 1 - elapsedSeconds / config.speedBonusDecaySeconds;
-      speedBonus = Math.round(config.speedBonusMax * decay);
+    const elapsedSeconds = Math.max(0, (decisionTimestampMs - injectStartMs) / 1000);
+    const decaySeconds = Math.max(0, config.speedBonusDecaySeconds);
+    const maxBonus = Math.max(0, config.speedBonusMax);
+
+    if (decaySeconds === 0) {
+      speedBonus = elapsedSeconds === 0 ? maxBonus : 0;
+    } else if (elapsedSeconds <= decaySeconds) {
+      const decay = 1 - elapsedSeconds / decaySeconds;
+      speedBonus = Math.round(maxBonus * decay);
     }
   }
 
@@ -52,7 +57,7 @@ export function buildLeaderboard(
     learningScore: number;
   }>
 ): LeaderboardEntry[] {
-  return players
+  return [...players]
     .sort((a, b) => b.totalScore - a.totalScore)
     .map((p, idx) => ({ ...p, rank: idx + 1 }));
 }
@@ -103,4 +108,9 @@ export function analyzeGaps(
   }
 
   return result.sort((a, b) => a.avgScore - b.avgScore);
+}
+
+function clamp(value: number, min: number, max: number): number {
+  if (!Number.isFinite(value)) return min;
+  return Math.min(max, Math.max(min, value));
 }

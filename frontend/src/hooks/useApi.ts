@@ -7,7 +7,7 @@ class ApiError extends Error {
   }
 }
 
-async function apiFetch<T>(url: string, options?: RequestInit): Promise<T> {
+export async function apiFetch<T>(url: string, options?: RequestInit): Promise<T> {
   const response = await fetch(url, {
     credentials: 'include',
     headers: {
@@ -33,25 +33,35 @@ async function apiFetch<T>(url: string, options?: RequestInit): Promise<T> {
       });
 
       if (!retry.ok) {
-        const err = await retry.json().catch(() => ({ error: 'Request failed' }));
+        const err = await readResponseBody<{ error?: string }>(retry).catch(() => ({ error: 'Request failed' }));
         throw new ApiError(retry.status, err.error || 'Request failed');
       }
 
-      return retry.json();
+      return readResponseBody<T>(retry);
     } else {
       // Clear auth and redirect
       useAuthStore.getState().logout();
-      window.location.href = '/login';
+      if (typeof window !== 'undefined') window.location.href = '/login';
       throw new ApiError(401, 'Session expired');
     }
   }
 
   if (!response.ok) {
-    const err = await response.json().catch(() => ({ error: 'Request failed' }));
+    const err = await readResponseBody<{ error?: string }>(response).catch(() => ({ error: 'Request failed' }));
     throw new ApiError(response.status, err.error || 'Request failed');
   }
 
-  return response.json();
+  return readResponseBody<T>(response);
+}
+
+async function readResponseBody<T>(response: Response): Promise<T> {
+  if (response.status === 204) return undefined as T;
+
+  const contentType = response.headers.get('content-type') ?? '';
+  if (contentType.includes('application/json')) return response.json();
+
+  const text = await response.text();
+  return (text ? { error: text } : undefined) as T;
 }
 
 export function useApi() {

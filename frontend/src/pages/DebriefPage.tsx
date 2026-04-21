@@ -1534,7 +1534,7 @@ export default function DebriefPage() {
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       const disposition = response.headers.get('content-disposition') ?? '';
-      const filenameMatch = disposition.match(/filename=\"?([^"]+)\"?/i);
+      const filenameMatch = disposition.match(/filename="?([^"]+)"?/i);
       const fallbackDate = new Date(data.date).toISOString().slice(0, 10);
       const fallbackName = `aar-${data.scenarioTitle.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-${fallbackDate}.pdf`;
       const filename = filenameMatch?.[1] ?? fallbackName;
@@ -1566,7 +1566,7 @@ export default function DebriefPage() {
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       const disposition = response.headers.get('content-disposition') ?? '';
-      const filenameMatch = disposition.match(/filename=\"?([^"]+)\"?/i);
+      const filenameMatch = disposition.match(/filename="?([^"]+)"?/i);
       const fallbackDate = new Date(data.date).toISOString().slice(0, 10);
       const fallbackName = `aar-${data.scenarioTitle.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-${fallbackDate}.docx`;
       const filename = filenameMatch?.[1] ?? fallbackName;

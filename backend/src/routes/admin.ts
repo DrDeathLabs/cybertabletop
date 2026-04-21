@@ -16,6 +16,14 @@ import {
   type ProviderType,
 } from '../services/ai-config';
 import { getOrgConfigForUser, saveOrgConfigForUser } from '../services/org-config';
+import {
+  calculateCsfPerformance,
+  calculateMfaAdoptionPct,
+  controlStatus,
+  overallStatus,
+  registrationGateStatus,
+  type ControlStatus,
+} from '../services/security-posture';
 import net from 'net';
 import http from 'http';
 
@@ -275,8 +283,8 @@ router.get('/security-posture', requireAuth, requireAdmin, async (req: AuthReque
   const auditOrgFilter:   Record<string, unknown> = isSuperAdmin ? {} : { user: { orgId } };
   const sessionOrgFilter: Record<string, unknown> = isSuperAdmin ? {} : { session: { orgId } };
   const registrationRequiresInvite = process.env.REQUIRE_INVITE === 'true';
-  const inviteCodeConfigured = Boolean(process.env.INVITE_CODE);
-  const registrationControlled = registrationRequiresInvite && inviteCodeConfigured;
+  const registrationGate = registrationGateStatus(registrationRequiresInvite, process.env.INVITE_CODE);
+  const registrationControlled = registrationGate.controlled;
 
   const now    = new Date();
   const h24ago = new Date(now.getTime() - 24 * 60 * 60 * 1000);
@@ -373,20 +381,10 @@ router.get('/security-posture', requireAuth, requireAdmin, async (req: AuthReque
     ? Math.floor((now.getTime() - new Date(oldestAuditEntry.timestamp).getTime()) / (24 * 60 * 60 * 1000))
     : 0;
 
-  const mfaAdoptionPct = totalUsers > 0 ? Math.round((mfaUsers / totalUsers) * 100) : 0;
+  const mfaAdoptionPct = calculateMfaAdoptionPct(mfaUsers, totalUsers);
 
   // â”€â”€ NIST CSF Performance â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  const csfFunctions = ['IDENTIFY', 'PROTECT', 'DETECT', 'RESPOND', 'RECOVER'] as const;
-  const csfPerformance: Record<string, number | null> = {};
-  const csfCounts:      Record<string, number>        = {};
-  for (const fn of csfFunctions) {
-    const fnDecisions = nistDecisions.filter((d) => d.inject.nistCsfFunction === fn);
-    csfCounts[fn] = fnDecisions.length;
-    csfPerformance[fn] =
-      fnDecisions.length === 0
-        ? null
-        : Math.round(fnDecisions.reduce((acc, d) => acc + d.score, 0) / fnDecisions.length);
-  }
+  const { performance: csfPerformance, counts: csfCounts } = calculateCsfPerformance(nistDecisions);
 
   // â”€â”€ Nginx header evaluation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const nh = nginxProbe.headers;
@@ -400,14 +398,6 @@ router.get('/security-posture', requireAuth, requireAdmin, async (req: AuthReque
   const isProduction    = process.env.NODE_ENV === 'production';
 
   // â”€â”€ NIST 800-53 Rev 5 Control Checks â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  type ControlStatus = 'PASS' | 'WARN' | 'FAIL';
-
-  function controlStatus(passCondition: boolean, warnCondition: boolean): ControlStatus {
-    if (passCondition) return 'PASS';
-    if (warnCondition) return 'WARN';
-    return 'FAIL';
-  }
-
   const controls = [
 
     // â”€â”€ AC: Access Control â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -419,7 +409,7 @@ router.get('/security-posture', requireAuth, requireAdmin, async (req: AuthReque
       description:
         'User accounts are actively managed with defined roles. Inactive/unauthorized accounts are disabled. Account status is monitored in real time.',
       status: controlStatus(registrationControlled && lockedUsers <= 2, registrationRequiresInvite && lockedUsers <= 10),
-      detail: `${lockedUsers} account${lockedUsers !== 1 ? 's' : ''} currently locked. ${totalUsers} human users. Registration gate: ${registrationControlled ? 'invite code enforced' : registrationRequiresInvite ? 'invite required but INVITE_CODE missing' : 'open self-registration'}. Built-in system account hidden from user totals.`,
+      detail: `${lockedUsers} account${lockedUsers !== 1 ? 's' : ''} currently locked. ${totalUsers} human users. Registration gate: ${registrationGate.label}. Built-in system account hidden from user totals.`,
       metric: lockedUsers,
       components: ['Application', 'PostgreSQL'],
       evidenceSource:
@@ -972,9 +962,7 @@ router.get('/security-posture', requireAuth, requireAdmin, async (req: AuthReque
     },
   ];
 
-  const hasFail = controls.some((c) => c.status === 'FAIL');
-  const hasWarn = controls.some((c) => c.status === 'WARN');
-  const overall = hasFail ? 'RED' : hasWarn ? 'YELLOW' : 'GREEN';
+  const overall = overallStatus(controls);
 
   res.json({
     overall,

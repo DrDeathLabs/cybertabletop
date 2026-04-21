@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './stores/auth';
 import { Toaster } from './components/shared/Toaster';
+import { ErrorBoundary } from './components/shared/ErrorBoundary';
 
 // Pages
 import LoginPage from './pages/LoginPage';
@@ -36,7 +37,7 @@ function FacilitatorRoute({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   return (
-    <>
+    <ErrorBoundary>
       <Routes>
         {/* Auth */}
         <Route path="/login" element={<LoginPage />} />
@@ -66,6 +67,6 @@ export default function App() {
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
       <Toaster />
-    </>
+    </ErrorBoundary>
   );
 }

@@ -694,10 +694,10 @@ function SecurityDashboardTab({ onSwitchToAudit }: { onSwitchToAudit?: (action: 
         ];
         const hasIssues = issueControls.length > 0;
         const bannerConfig = overall === 'GREEN'
-          ? { bg: 'bg-green-500/10', border: 'border-green-500/40', text: 'text-green-400', subtext: 'text-green-400/70', icon: <ShieldCheck className="w-7 h-7 text-green-400" />, iconBg: 'bg-green-500/20 border-green-500/40', title: 'SYSTEM SECURE', sub: `All ${controls.length} NIST 800-53 controls passing · Continuous ATO posture is green` }
+          ? { bg: 'bg-green-500/10', border: 'border-green-500/40', text: 'text-green-400', subtext: 'text-green-400/70', icon: <ShieldCheck className="w-7 h-7 text-green-400" />, iconBg: 'bg-green-500/20 border-green-500/40', title: 'MEASURED POSTURE CLEAR', sub: `All ${controls.length} CyberTabletop checks passing based on current telemetry` }
           : overall === 'YELLOW'
-          ? { bg: 'bg-yellow-500/10', border: 'border-yellow-500/40', text: 'text-yellow-400', subtext: 'text-yellow-400/70', icon: <ShieldAlert className="w-7 h-7 text-yellow-400" />, iconBg: 'bg-yellow-500/20 border-yellow-500/40', title: 'ATTENTION REQUIRED', sub: `${warnCount} control${warnCount !== 1 ? 's' : ''} require review · ${failCount > 0 ? failCount + ' failing' : 'No failures detected'} · Click to expand all issues` }
-          : { bg: 'bg-red-500/10', border: 'border-red-500/40', text: 'text-red-400', subtext: 'text-red-400/70', icon: <ShieldX className="w-7 h-7 text-red-400" />, iconBg: 'bg-red-500/20 border-red-500/40', title: 'SECURITY ALERT', sub: `${failCount} control${failCount !== 1 ? 's' : ''} failing${warnCount > 0 ? ` · ${warnCount} warning${warnCount > 1 ? 's' : ''}` : ''} · Click to expand all issues` };
+          ? { bg: 'bg-yellow-500/10', border: 'border-yellow-500/40', text: 'text-yellow-400', subtext: 'text-yellow-400/70', icon: <ShieldAlert className="w-7 h-7 text-yellow-400" />, iconBg: 'bg-yellow-500/20 border-yellow-500/40', title: 'REVIEW REQUIRED', sub: `${warnCount} check${warnCount !== 1 ? 's' : ''} need review; ${failCount > 0 ? failCount + ' failing' : 'no failures detected'}` }
+          : { bg: 'bg-red-500/10', border: 'border-red-500/40', text: 'text-red-400', subtext: 'text-red-400/70', icon: <ShieldX className="w-7 h-7 text-red-400" />, iconBg: 'bg-red-500/20 border-red-500/40', title: 'ACTION REQUIRED', sub: `${failCount} check${failCount !== 1 ? 's' : ''} failing${warnCount > 0 ? `; ${warnCount} warning${warnCount > 1 ? 's' : ''}` : ''}` };
         return (
           <div className={`rounded-xl border overflow-hidden ${bannerConfig.bg} ${bannerConfig.border}`}>
             {/* Banner row */}
