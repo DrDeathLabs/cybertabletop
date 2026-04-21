@@ -82,8 +82,11 @@ jobs:
       - name: Validate compose file
         run: docker compose -p cybertabletop-ci config --no-interpolate
 
+      - name: Validate pull-based compose file
+        run: docker compose -p cybertabletop-ci -f docker-compose.pull.yml config --no-interpolate
+
       - name: Build containers
-        run: docker compose -p cybertabletop-ci build backend frontend
+        run: docker compose -p cybertabletop-ci build backend frontend nginx
 
   installer-syntax:
     name: Installer Syntax

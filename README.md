@@ -84,6 +84,15 @@ For local testing, the install scripts can generate local secrets and self-signe
 
 ### 2. Start the stack
 
+Use the prebuilt images from GitHub Container Registry:
+
+```bash
+docker compose -p cybertabletop -f docker-compose.pull.yml pull
+docker compose -p cybertabletop -f docker-compose.pull.yml up -d
+```
+
+Or build locally from source:
+
 ```bash
 docker compose -p cybertabletop up -d --build
 ```
@@ -98,9 +107,11 @@ To expose the app behind a trusted reverse proxy or edge load balancer, configur
 ### 3. Run migrations and seed built-in scenarios
 
 ```bash
-docker compose -p cybertabletop exec backend npm run db:migrate
-docker compose -p cybertabletop exec backend npm run db:seed
+docker compose -p cybertabletop -f docker-compose.pull.yml exec backend npm run db:migrate
+docker compose -p cybertabletop -f docker-compose.pull.yml exec backend npm run db:seed
 ```
+
+If you started the source-build compose file instead, omit `-f docker-compose.pull.yml`.
 
 ### 4. Open the app
 
@@ -175,9 +186,25 @@ cybertabletop/
   deployment/           Cloud deployment notes
   scenarios/            Scenario-related assets
   docker-compose.yml    Self-hosted Docker stack
+  docker-compose.pull.yml
+                         Self-hosted stack using prebuilt GHCR images
   SECURITY.md           Vulnerability reporting and hardening notes
   LICENSE               Business Source License 1.1
 ```
+
+## Container Images
+
+Prebuilt images are published to GitHub Container Registry:
+
+- `ghcr.io/darrenmdeath/cybertabletop-backend:latest`
+- `ghcr.io/darrenmdeath/cybertabletop-frontend:latest`
+- `ghcr.io/darrenmdeath/cybertabletop-nginx:latest`
+
+The `latest` tag is published from the `main` branch. Commit-specific images
+are also published with `sha-` tags.
+
+If `docker pull` reports an authorization error, open the repository's Packages
+page in GitHub and make the packages public.
 
 ## GitHub Safety Notes
 

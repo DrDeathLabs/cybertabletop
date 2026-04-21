@@ -1,9 +1,7 @@
-# CyberTabletop — Local Development / Self-Hosted Stack
-# All services run in a private network; only nginx is exposed externally
-# NIST SP 800-53 Rev 5: SC-7 (Boundary Protection)
+# CyberTabletop - pull-based self-hosted stack
+# Uses prebuilt images from GitHub Container Registry instead of local builds.
 
 services:
-  # ── PostgreSQL Database ─────────────────────────────────────────────────
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
@@ -23,9 +21,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    # No external port — only reachable inside internal network (NIST SC-7)
 
-  # ── Redis (Socket.io session adapter, future caching) ─────────────────
   redis:
     image: redis:7-alpine
     restart: unless-stopped
@@ -42,19 +38,14 @@ services:
       timeout: 5s
       retries: 3
 
-  # ── Backend API ──────────────────────────────────────────────────────────
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    image: ${CYBERTABLETOP_IMAGE_REGISTRY:-ghcr.io/darrenmdeath}/cybertabletop-backend:${CYBERTABLETOP_IMAGE_TAG:-latest}
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
     environment:
       NODE_ENV: ${NODE_ENV:-production}
       PORT: 3001
-      # Expanded from .env at runtime. Keep POSTGRES_PASSWORD secret.
-      # Use an alphanumeric password, or URL-encode special characters.
       DATABASE_URL: postgresql://${POSTGRES_USER:-cybertabletop}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-cybertabletop}
       JWT_SECRET: ${JWT_SECRET}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
@@ -74,8 +65,6 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       REQUIRE_INVITE: ${REQUIRE_INVITE:-true}
       INVITE_CODE: ${INVITE_CODE:-}
-    # host.docker.internal resolves to the Docker host on Docker Desktop.
-    # host-gateway enables the same pattern on modern Linux Docker engines.
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
@@ -85,7 +74,7 @@ services:
         condition: service_healthy
     networks:
       - internal
-      - host-bridge  # non-internal bridge so the backend can reach host services (Ollama)
+      - host-bridge
     volumes:
       - backend_logs:/app/logs
     healthcheck:
@@ -94,14 +83,8 @@ services:
       timeout: 10s
       retries: 3
 
-  # ── Frontend (Vite build served by Nginx in container) ──────────────────
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      args:
-        VITE_API_URL: /api
-        VITE_WS_URL: /
+    image: ${CYBERTABLETOP_IMAGE_REGISTRY:-ghcr.io/darrenmdeath}/cybertabletop-frontend:${CYBERTABLETOP_IMAGE_TAG:-latest}
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
@@ -113,13 +96,8 @@ services:
       timeout: 5s
       retries: 3
 
-  # ── Nginx Reverse Proxy ─────────────────────────────────────────────────
-  # Only container exposed to host — enforces security boundary (NIST SC-7)
   nginx:
-    build:
-      context: ./nginx
-      dockerfile: Dockerfile
-    image: cybertabletop-nginx
+    image: ${CYBERTABLETOP_IMAGE_REGISTRY:-ghcr.io/darrenmdeath}/cybertabletop-nginx:${CYBERTABLETOP_IMAGE_TAG:-latest}
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
@@ -127,7 +105,6 @@ services:
       - '${HTTP_BIND:-127.0.0.1}:${HTTP_PORT:-80}:80'
       - '${HTTPS_BIND:-127.0.0.1}:${HTTPS_PORT:-443}:443'
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/ssl:/etc/nginx/ssl:ro
       - nginx_logs:/var/log/nginx
     depends_on:
@@ -150,8 +127,9 @@ volumes:
 networks:
   internal:
     driver: bridge
-    internal: true    # No direct internet access for internal services (NIST SC-7)
+    internal: true
   external:
-    driver: bridge    # Only nginx bridges to external
+    driver: bridge
   host-bridge:
-    driver: bridge    # Non-isolated bridge; backend uses this to reach host services (e.g. Ollama)
+    driver: bridge
+
