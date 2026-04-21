@@ -178,7 +178,10 @@ router.get('/me', requireAuth, async (req: AuthRequest, res: Response) => {
 
 // GET /api/auth/sso-status
 router.get('/sso-status', (_req, res) => {
-  res.json({ enabled: !!process.env.OIDC_ISSUER_URL });
+  res.json({
+    enabled: !!process.env.OIDC_ISSUER_URL,
+    registrationRequiresInvite: process.env.REQUIRE_INVITE === 'true',
+  });
 });
 
 function cookieOptions(maxAge: number) {

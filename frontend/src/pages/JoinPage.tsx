@@ -122,13 +122,14 @@ export default function JoinPage() {
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Join code */}
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
+              <label htmlFor="join-code" className="block text-sm font-medium text-slate-300 mb-2">
                 <div className="flex items-center gap-2">
                   <Hash className="w-4 h-4 text-blue-400" />
                   Session Code
                 </div>
               </label>
               <input
+                id="join-code"
                 ref={codeInputRef}
                 type="text"
                 value={joinCode}
@@ -143,7 +144,7 @@ export default function JoinPage() {
 
             {/* Role selector */}
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
+              <label htmlFor="join-role" className="block text-sm font-medium text-slate-300 mb-2">
                 <div className="flex items-center gap-2">
                   <Users className="w-4 h-4 text-blue-400" />
                   Your Role
@@ -152,6 +153,7 @@ export default function JoinPage() {
 
               <div className="relative">
                 <select
+                  id="join-role"
                   value={isCustom ? 'Custom...' : selectedRole}
                   onChange={(e) => handleRoleSelect(e.target.value)}
                   className="w-full appearance-none bg-slate-900 border border-slate-600 rounded-lg pl-4 pr-10 py-2.5 text-slate-100 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/50 transition-colors text-sm cursor-pointer"
@@ -169,6 +171,8 @@ export default function JoinPage() {
                 <div className="mt-3 relative">
                   <Edit3 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                   <input
+                    id="join-custom-role"
+                    aria-label="Custom role"
                     type="text"
                     value={customRole}
                     onChange={(e) => setCustomRole(e.target.value)}

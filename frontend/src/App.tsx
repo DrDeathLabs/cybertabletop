@@ -35,6 +35,15 @@ function FacilitatorRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function AdminRoute({ children }: { children: React.ReactNode }) {
+  const user = useAuthStore((s) => s.user);
+  if (!user) return <Navigate to="/login" replace />;
+  if (!['ORG_ADMIN', 'SUPER_ADMIN'].includes(user.role)) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  return <>{children}</>;
+}
+
 export default function App() {
   return (
     <ErrorBoundary>
@@ -60,7 +69,7 @@ export default function App() {
         <Route path="/sessions/new" element={<FacilitatorRoute><CreateSessionPage /></FacilitatorRoute>} />
         <Route path="/sessions/:sessionId/lobby" element={<FacilitatorRoute><SessionLobbyPage /></FacilitatorRoute>} />
         <Route path="/sessions/:id/onboarding" element={<FacilitatorRoute><OnboardingPage /></FacilitatorRoute>} />
-        <Route path="/admin" element={<FacilitatorRoute><AdminPage /></FacilitatorRoute>} />
+        <Route path="/admin" element={<AdminRoute><AdminPage /></AdminRoute>} />
 
         {/* Default */}
         <Route path="/" element={<Navigate to="/dashboard" replace />} />

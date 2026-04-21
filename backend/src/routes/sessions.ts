@@ -11,6 +11,7 @@ import {
 } from '../services/session';
 import { prisma } from '../services/db';
 import { buildLeaderboard, analyzeGaps } from '../services/scoring';
+import { canManageSession, canViewSession } from '../services/session-access';
 import { audit } from '../services/audit';
 import { AiScenarioType, AiDifficulty } from '../services/ai/generate-scenario';
 import { getAISettings } from '../services/ai-config';
@@ -429,13 +430,7 @@ router.get('/:id', requireAuth, async (req: AuthRequest, res: Response) => {
     return;
   }
 
-  // Only facilitator or session participants can view.
-  // Admins can always view. PLAYER-role users must be a participant.
-  const isParticipant = session.players.some((p) => p.userId === req.user!.id);
-  const isFacilitator = session.facilitatorId === req.user!.id;
-  const isAdmin = req.user!.role === 'SUPER_ADMIN' || req.user!.role === 'ORG_ADMIN';
-
-  if (!isParticipant && !isFacilitator && !isAdmin) {
+  if (!canViewSession(req.user!, session)) {
     res.status(403).json({ error: 'Access denied' });
     return;
   }
@@ -489,15 +484,24 @@ router.patch('/:id/players/:userId/role', requireAuth, requireFacilitator, async
   }
 
   const session = await prisma.session.findUnique({ where: { id: req.params.id } });
-  if (!session || session.facilitatorId !== req.user!.id) {
+  if (!session) {
+    res.status(404).json({ error: 'Session not found' });
+    return;
+  }
+
+  if (!canManageSession(req.user!, session)) {
     res.status(403).json({ error: 'Not authorized for this session' });
     return;
   }
 
-  await prisma.sessionPlayer.updateMany({
+  const updated = await prisma.sessionPlayer.updateMany({
     where: { sessionId: req.params.id, userId: req.params.userId },
     data: { assignedRole: role },
   });
+  if (updated.count === 0) {
+    res.status(404).json({ error: 'Player is not part of this session' });
+    return;
+  }
 
   res.json({ ok: true });
 });
@@ -508,16 +512,14 @@ router.patch('/:id/players/:userId/role', requireAuth, requireFacilitator, async
 router.get('/:id/injects', requireAuth, requireFacilitator, async (req: AuthRequest, res: Response) => {
   const session = await prisma.session.findUnique({
     where: { id: req.params.id },
-    select: { scenarioId: true, currentInjectId: true, facilitatorId: true },
+    select: { scenarioId: true, currentInjectId: true, facilitatorId: true, orgId: true },
   });
   if (!session) {
     res.status(404).json({ error: 'Session not found' });
     return;
   }
 
-  // Only the session's facilitator or an admin can query its inject list
-  const isAdmin = req.user!.role === 'SUPER_ADMIN' || req.user!.role === 'ORG_ADMIN';
-  if (session.facilitatorId !== req.user!.id && !isAdmin) {
+  if (!canManageSession(req.user!, session)) {
     res.status(403).json({ error: 'Not authorized for this session' });
     return;
   }
@@ -551,6 +553,10 @@ router.get('/:id/debrief', requireAuth, async (req: AuthRequest, res: Response) 
 
   if (!data) {
     res.status(404).json({ error: 'Session not found' });
+    return;
+  }
+  if (!canViewSession(req.user!, data)) {
+    res.status(403).json({ error: 'Access denied' });
     return;
   }
 
@@ -720,6 +726,10 @@ router.get('/:id/debrief/pdf', requireAuth, async (req: AuthRequest, res: Respon
     res.status(404).json({ error: 'Session not found' });
     return;
   }
+  if (!canViewSession(req.user!, data)) {
+    res.status(403).json({ error: 'Access denied' });
+    return;
+  }
 
   const payload = buildDebriefPayload(data);
   const pdf = await generateDebriefPdf(payload);
@@ -736,6 +746,10 @@ router.get('/:id/debrief/docx', requireAuth, async (req: AuthRequest, res: Respo
 
   if (!data) {
     res.status(404).json({ error: 'Session not found' });
+    return;
+  }
+  if (!canViewSession(req.user!, data)) {
+    res.status(403).json({ error: 'Access denied' });
     return;
   }
 
@@ -927,9 +941,9 @@ function buildAlgorithmicPostExerciseAnalysis(payload: {
 
 // PUT /api/sessions/:id/hot-wash — facilitator saves after-action hot wash data
 router.put('/:id/hot-wash', requireAuth, requireFacilitator, async (req: AuthRequest, res: Response) => {
-  const session = await prisma.session.findUnique({ where: { id: req.params.id }, select: { facilitatorId: true } });
+  const session = await prisma.session.findUnique({ where: { id: req.params.id }, select: { facilitatorId: true, orgId: true } });
   if (!session) { res.status(404).json({ error: 'Session not found' }); return; }
-  if (session.facilitatorId !== req.user!.id && req.user!.role !== 'SUPER_ADMIN' && req.user!.role !== 'ORG_ADMIN') {
+  if (!canManageSession(req.user!, session)) {
     res.status(403).json({ error: 'Only the facilitator can save hot wash data' }); return;
   }
   await prisma.session.update({
@@ -943,9 +957,9 @@ router.put('/:id/hot-wash', requireAuth, requireFacilitator, async (req: AuthReq
 
 // POST /api/sessions/:id/hot-wash/generate — AI-generate hot wash content from session data
 router.post('/:id/hot-wash/generate', requireAuth, requireFacilitator, async (req: AuthRequest, res: Response) => {
-  const sessionCheck = await prisma.session.findUnique({ where: { id: req.params.id }, select: { facilitatorId: true } });
+  const sessionCheck = await prisma.session.findUnique({ where: { id: req.params.id }, select: { facilitatorId: true, orgId: true } });
   if (!sessionCheck) { res.status(404).json({ error: 'Session not found' }); return; }
-  if (sessionCheck.facilitatorId !== req.user!.id && req.user!.role !== 'SUPER_ADMIN' && req.user!.role !== 'ORG_ADMIN') {
+  if (!canManageSession(req.user!, sessionCheck)) {
     res.status(403).json({ error: 'Forbidden' }); return;
   }
 
@@ -1515,10 +1529,10 @@ router.delete('/:id', requireAuth, requireFacilitator, async (req: AuthRequest, 
 router.post('/:id/onboarding', requireAuth, requireFacilitator, async (req: AuthRequest, res: Response) => {
   const session = await prisma.session.findUnique({
     where: { id: req.params.id },
-    select: { facilitatorId: true },
+    select: { facilitatorId: true, orgId: true },
   });
   if (!session) { res.status(404).json({ error: 'Session not found' }); return; }
-  if (session.facilitatorId !== req.user!.id && req.user!.role !== 'SUPER_ADMIN') {
+  if (!canManageSession(req.user!, session)) {
     res.status(403).json({ error: 'Only the facilitator can save onboarding data' }); return;
   }
 
@@ -1572,10 +1586,14 @@ router.put('/:id/player-onboarding', requireAuth, async (req: AuthRequest, res: 
     res.status(400).json({ error: 'Validation failed' }); return;
   }
 
-  await prisma.sessionPlayer.updateMany({
+  const updated = await prisma.sessionPlayer.updateMany({
     where: { sessionId: req.params.id, userId: req.user!.id },
     data: { profileAnswers: parsed.data },
   });
+  if (updated.count === 0) {
+    res.status(403).json({ error: 'Join this session before saving onboarding responses' });
+    return;
+  }
 
   res.json({ ok: true });
 });
@@ -1584,10 +1602,10 @@ router.put('/:id/player-onboarding', requireAuth, async (req: AuthRequest, res: 
 router.post('/:id/ai-debrief', requireAuth, requireFacilitator, async (req: AuthRequest, res: Response) => {
   const session = await prisma.session.findUnique({
     where: { id: req.params.id },
-    select: { facilitatorId: true, status: true },
+    select: { facilitatorId: true, orgId: true, status: true },
   });
   if (!session) { res.status(404).json({ error: 'Session not found' }); return; }
-  if (session.facilitatorId !== req.user!.id && req.user!.role !== 'SUPER_ADMIN') {
+  if (!canManageSession(req.user!, session)) {
     res.status(403).json({ error: 'Forbidden' }); return;
   }
   if (session.status === 'LOBBY' || session.status === 'ACTIVE') {

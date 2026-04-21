@@ -1,4 +1,4 @@
-import { useState, FormEvent } from 'react';
+import { useEffect, useState, FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Shield, Mail, Lock, User, Loader2, CheckCircle, XCircle } from 'lucide-react';
 import { useAuthStore } from '../stores/auth';
@@ -35,12 +35,29 @@ export default function RegisterPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [inviteCode, setInviteCode] = useState('');
+  const [requiresInvite, setRequiresInvite] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showRequirements, setShowRequirements] = useState(false);
 
   const allRequirementsMet = PASSWORD_REQUIREMENTS.every((r) => r.test(password));
   const passwordsMatch = password === confirmPassword && confirmPassword.length > 0;
+  const canSubmit =
+    allRequirementsMet
+    && passwordsMatch
+    && displayName.trim().length > 0
+    && requiresInvite !== null
+    && (!requiresInvite || inviteCode.trim().length > 0);
+
+  useEffect(() => {
+    fetch('/api/auth/sso-status', { credentials: 'include' })
+      .then((r) => r.json())
+      .then((data: { registrationRequiresInvite?: boolean }) => {
+        setRequiresInvite(Boolean(data.registrationRequiresInvite));
+      })
+      .catch(() => setRequiresInvite(false));
+  }, []);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -66,6 +83,7 @@ export default function RegisterPage() {
           displayName: displayName.trim(),
           email: email.trim(),
           password,
+          ...(requiresInvite === true ? { inviteCode: inviteCode.trim() } : {}),
         }),
       });
 
@@ -201,6 +219,24 @@ export default function RegisterPage() {
               )}
             </div>
 
+            {requiresInvite === true && (
+              <div>
+                <label htmlFor="register-invite-code" className="block text-sm font-medium text-slate-300 mb-1.5">
+                  Invite Code
+                </label>
+                <input
+                  id="register-invite-code"
+                  type="text"
+                  value={inviteCode}
+                  onChange={(e) => setInviteCode(e.target.value)}
+                  placeholder="Enter invite code"
+                  required
+                  autoComplete="one-time-code"
+                  className="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2.5 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/50 transition-colors text-sm"
+                />
+              </div>
+            )}
+
             {/* Confirm Password */}
             <div>
               <label htmlFor="register-confirm-password" className="block text-sm font-medium text-slate-300 mb-1.5">
@@ -232,7 +268,7 @@ export default function RegisterPage() {
 
             <button
               type="submit"
-              disabled={loading || !allRequirementsMet || !passwordsMatch || !displayName.trim()}
+              disabled={loading || !canSubmit}
               className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 disabled:bg-blue-600/40 disabled:cursor-not-allowed text-white font-semibold rounded-lg py-2.5 transition-colors text-sm mt-2"
             >
               {loading ? (
