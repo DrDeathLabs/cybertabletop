@@ -1,0 +1,47 @@
+# Environment files — NEVER commit
+.env
+.env.local
+.env.*.local
+
+# Dependencies
+node_modules/
+*/node_modules/
+
+# Build outputs
+dist/
+build/
+*/dist/
+*/build/
+
+# TypeScript
+*.tsbuildinfo
+
+# Prisma migrations are source artifacts and should be committed.
+
+# SSL certificates (generated locally)
+nginx/ssl/*
+!nginx/ssl/.gitkeep
+
+# Logs
+*.log
+logs/
+
+# Docker volumes (local)
+.docker/
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test coverage
+coverage/
+
+# Temporary
+*.tmp
+*.temp

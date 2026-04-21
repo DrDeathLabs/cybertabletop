@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title>CyberTabletop</title>
+  <rect width="64" height="64" rx="14" fill="#0f172a"/>
+  <path d="M32 8 50 16v13c0 12.5-7.2 21.7-18 27-10.8-5.3-18-14.5-18-27V16L32 8Z" fill="#1e3a8a" stroke="#60a5fa" stroke-width="3"/>
+  <path d="M24 31h16M32 23v16" stroke="#bfdbfe" stroke-width="4" stroke-linecap="round"/>
+</svg>

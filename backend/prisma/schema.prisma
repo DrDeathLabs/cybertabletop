@@ -1,0 +1,309 @@
+// CyberTabletop - Prisma Schema
+// NIST SP 800-53 Rev 5 compliant data model
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  ORG_ADMIN
+  FACILITATOR
+  PLAYER
+}
+
+enum SessionStatus {
+  LOBBY
+  ACTIVE
+  DEBRIEF
+  COMPLETE
+}
+
+enum ScenarioType {
+  RANSOMWARE
+  PHISHING
+  DATA_BREACH
+  INSIDER_THREAT
+  BEC
+  SUPPLY_CHAIN
+  DDOS
+  DDoS
+  APT
+  CUSTOM
+}
+
+enum Difficulty {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  EXPERT
+}
+
+enum ScenarioMode {
+  SCRIPTED
+  AI_DRIVEN
+}
+
+enum AuditAction {
+  USER_LOGIN
+  USER_LOGOUT
+  USER_LOGIN_FAILED
+  USER_CREATED
+  USER_UPDATED
+  USER_DELETED
+  USER_LOCKED
+  MFA_ENABLED
+  MFA_DISABLED
+  PASSWORD_CHANGED
+  SESSION_CREATED
+  SESSION_STARTED
+  SESSION_ENDED
+  PLAYER_JOINED
+  DECISION_SUBMITTED
+  SCENARIO_CREATED
+  SCENARIO_UPDATED
+  SCENARIO_DELETED
+  ROLE_CHANGED
+  SSO_LOGIN
+}
+
+model Organization {
+  id          String   @id @default(uuid())
+  name        String
+  slug        String   @unique
+  ssoConfig   Json?    // OIDC config: {issuer, clientId, clientSecret, redirectUri}
+  settings    Json     @default("{}")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users       User[]
+  sessions    Session[]
+  scenarios   Scenario[]
+}
+
+model User {
+  id              String    @id @default(uuid())
+  email           String    @unique
+  displayName     String
+  role            UserRole  @default(PLAYER)
+  orgId           String?
+  org             Organization? @relation(fields: [orgId], references: [id])
+  passwordHash    String?
+  ssoProvider     String?   // "oidc", "microsoft", etc.
+  ssoSubject      String?   // external user ID
+  mfaSecret       String?   // TOTP secret (encrypted)
+  mfaEnabled      Boolean   @default(false)
+  failedAttempts  Int       @default(0)
+  lockedUntil     DateTime?
+  lastLoginAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  sessions        SessionPlayer[]
+  decisions       Decision[]
+  facilitatedSessions Session[]
+  createdScenarios Scenario[]
+  auditLogs       AuditLog[]
+  promptTemplates PromptTemplate[] @relation("PromptTemplateUpdatedBy")
+  aiConfigs       AIConfig[]       @relation("AIConfigUpdatedBy")
+  refreshTokens   RefreshToken[]
+
+  @@unique([ssoProvider, ssoSubject])
+  @@index([email])
+  @@index([orgId])
+}
+
+model RefreshToken {
+  id         String   @id @default(uuid())
+  jti        String   @unique
+  tokenHash  String
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  rotatedAt  DateTime?
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Scenario {
+  id          String       @id @default(uuid())
+  title       String
+  description String
+  type        ScenarioType
+  difficulty  Difficulty
+  objectives  String[]
+  mode        ScenarioMode @default(SCRIPTED)
+  onboardingSchema Json?   // Array of question objects for AI-driven sessions
+  isPublic    Boolean      @default(false)
+  isBuiltIn   Boolean      @default(false)
+  orgId       String?
+  org         Organization? @relation(fields: [orgId], references: [id])
+  createdById String
+  createdBy   User         @relation(fields: [createdById], references: [id])
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  injects     Inject[]
+  sessions    Session[]
+}
+
+model Inject {
+  id              String   @id @default(uuid())
+  scenarioId      String
+  scenario        Scenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  phase           String
+  phaseOrder      Int
+  injectOrder     Int
+  title           String
+  narrative       String   @db.Text
+  backgroundBrief String?  @db.Text
+  roleVisibility  String[] // empty = all roles see it
+  mitreAttackId   String?  // e.g. "T1486"
+  mitreAttackName String?
+  nistCsfFunction String?  // IDENTIFY/PROTECT/DETECT/RESPOND/RECOVER
+  timerSeconds    Int?     // null = no timer
+  createdAt       DateTime @default(now())
+
+  options         InjectOption[]
+  decisions       Decision[]
+}
+
+model InjectOption {
+  id              String   @id @default(uuid())
+  injectId        String
+  inject          Inject   @relation(fields: [injectId], references: [id], onDelete: Cascade)
+  text            String
+  scoreWeight     Int      // 0-100
+  isOptimal       Boolean  @default(false)
+  scriptedFeedback String  @db.Text
+  feedbackTags    String[] // e.g. ["good-practice", "common-mistake", "legal-risk"]
+  consequences    String?  // narrative consequence shown after reveal
+  createdAt       DateTime @default(now())
+
+  decisions       Decision[]
+}
+
+model Session {
+  id            String        @id @default(uuid())
+  name          String?       // Optional facilitator-provided exercise name
+  scenarioId    String
+  scenario      Scenario      @relation(fields: [scenarioId], references: [id])
+  facilitatorId String
+  facilitator   User          @relation(fields: [facilitatorId], references: [id])
+  orgId         String?
+  org           Organization? @relation(fields: [orgId], references: [id])
+  joinCode      String        @unique
+  status        SessionStatus @default(LOBBY)
+  currentInjectId String?
+  settings      Json          @default("{}") // speedBonus, timerEnabled, showLeaderboard, etc.
+  startedAt        DateTime?
+  endedAt          DateTime?
+  hotWash          Json?         // After-action report hot wash data (facilitator-editable)
+  onboardingAnswers Json?        // Org/context answers for AI-driven sessions
+  playerOnboarding  Boolean      @default(false) // true = players fill own profile at lobby
+  aiPreviewMode     Boolean      @default(true)  // true = facilitator reviews inject before presenting
+  totalRounds       Int          @default(0)     // 0 = unlimited; >0 = AI-driven session ends after this many rounds
+  aiHistory         Json?        // Array of {injectTitle, narrative, decisions[]} for AI context
+  aiDebriefText     String?      @db.Text        // AI-generated performance debrief narrative
+  facilitatorScript Json?                        // {opening, rounds:{1:...,2:...}, closing}
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  players       SessionPlayer[]
+  decisions     Decision[]
+
+  @@index([joinCode])
+  @@index([status])
+}
+
+model SessionPlayer {
+  id              String  @id @default(uuid())
+  sessionId       String
+  session         Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User    @relation(fields: [userId], references: [id])
+  assignedRole    String
+  totalScore      Int     @default(0)
+  learningScore   Int     @default(0) // quality of decisions regardless of speed
+  speedBonusTotal Int     @default(0)
+  isConnected     Boolean @default(false)
+  profileAnswers  Json?   // Player self-onboarding answers (role experience, learning goal, etc.)
+  joinedAt        DateTime @default(now())
+
+  @@unique([sessionId, userId])
+  @@index([sessionId])
+}
+
+model Decision {
+  id          String       @id @default(uuid())
+  sessionId   String
+  session     Session      @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  playerId    String
+  player      User         @relation(fields: [playerId], references: [id])
+  injectId    String
+  inject      Inject       @relation(fields: [injectId], references: [id])
+  optionId    String
+  option      InjectOption @relation(fields: [optionId], references: [id])
+  rationale   String?      // optional 1-line player rationale
+  score       Int
+  speedBonus  Int          @default(0)
+  aiFeedback  String?      @db.Text
+  aiProvider  String?      // "claude", "ollama", "scripted"
+  timestamp   DateTime     @default(now())
+
+  @@unique([sessionId, playerId, injectId])
+  @@index([sessionId])
+  @@index([playerId])
+}
+
+// Editable AI prompt templates (admin-configurable, DB-backed with hardcoded fallbacks)
+model PromptTemplate {
+  id          String   @id @default(uuid())
+  key         String   @unique  // "setup_prompt" | "inject_prompt"
+  label       String
+  description String
+  content     String   @db.Text
+  updatedById String?
+  updatedBy   User?    @relation("PromptTemplateUpdatedBy", fields: [updatedById], references: [id])
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
+}
+
+// AI provider configuration — editable via admin panel, overrides .env vars
+model AIConfig {
+  id          String   @id @default(uuid())
+  provider    String   @unique  // "ollama" | "anthropic" | "openai"
+  isActive    Boolean  @default(false)
+  settings    Json     @default("{}")
+  updatedById String?
+  updatedBy   User?    @relation("AIConfigUpdatedBy", fields: [updatedById], references: [id])
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
+
+  @@index([provider])
+}
+
+// Append-only audit log - NIST AU controls
+model AuditLog {
+  id         String      @id @default(uuid())
+  userId     String?
+  user       User?       @relation(fields: [userId], references: [id])
+  action     AuditAction
+  resource   String?
+  metadata   Json?
+  ipAddress  String?
+  userAgent  String?
+  timestamp  DateTime    @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([timestamp])
+}

@@ -1,0 +1,99 @@
+Business Source License 1.1
+
+License text copyright (c) 2017 MariaDB Corporation Ab, All Rights Reserved.
+"Business Source License" is a trademark of MariaDB Corporation Ab.
+
+Parameters
+
+Licensor: CyberTabletop contributors
+
+Licensed Work: CyberTabletop
+
+Additional Use Grant:
+
+You may make production use of the Licensed Work for internal business,
+organizational, educational, research, nonprofit, government, public sector,
+community, evaluation, development, testing, and personal purposes.
+
+For clarity, "internal use" means use of the Licensed Work by an individual
+or organization for that individual or organization's own tabletop exercises,
+training, security awareness, incident response preparation, internal
+operations, evaluation, development, testing, or research.
+
+The Additional Use Grant does not permit you to:
+
+- offer the Licensed Work, or a modified version of it, as a hosted service,
+  managed service, SaaS product, white-labeled product, or commercial
+  subscription offering;
+- sell, rent, lease, sublicense, or otherwise commercialize the Licensed Work
+  as a standalone product or service;
+- include the Licensed Work, or a modified version of it, as a material
+  feature of another commercial cybersecurity, training, GRC, tabletop,
+  incident response, risk management, or security operations product;
+- use the Licensed Work to deliver paid tabletop exercise services, paid
+  cyber training services, paid consulting deliverables, or paid managed
+  security services to third parties;
+- remove, obscure, or alter copyright, license, attribution, or trademark
+  notices from the Licensed Work.
+
+Uses not permitted by this Additional Use Grant require a separate commercial
+license from the Licensor.
+
+Change Date: Four years from the first publicly available distribution of
+each specific version of the Licensed Work.
+
+Change License: MIT License
+
+For information about commercial licensing, see COMMERCIAL.md.
+
+Terms
+
+The Licensor hereby grants you the right to copy, modify, create derivative
+works, redistribute, and make non-production use of the Licensed Work. The
+Licensor may make an Additional Use Grant, above, permitting limited production
+use.
+
+Effective on the Change Date, or the fourth anniversary of the first publicly
+available distribution of a specific version of the Licensed Work under this
+License, whichever comes first, the Licensor hereby grants you rights under
+the terms of the Change License, and the rights granted in the paragraph above
+terminate.
+
+If your use of the Licensed Work does not comply with the requirements
+currently in effect as described in this License, you must purchase a
+commercial license from the Licensor, its affiliated entities, or authorized
+resellers, or you must refrain from using the Licensed Work.
+
+All copies of the original and modified Licensed Work, and derivative works
+of the Licensed Work, are subject to this License. MariaDB hereby grants you
+permission to use this License's text to license your works, and to refer to it
+using the trademark "Business Source License", as long as you comply with the
+Covenants of Licensor below.
+
+Covenants of Licensor
+
+In consideration of the right to use this License's text and the "Business
+Source License" name and trademark, Licensor covenants to MariaDB, and to all
+other recipients of the licensed work to be provided by Licensor:
+
+1. To specify as the Change License the GPL Version 2.0 or any later version,
+   or a license that is compatible with GPL Version 2.0 or a later version,
+   where "compatible" means that software provided under the Change License
+   can be included in a program with software provided under GPL Version 2.0
+   or a later version. Licensor may specify additional Change Licenses without
+   limitation.
+
+2. To either: (a) specify an additional grant of rights to use that does not
+   impose any additional restriction on the right granted in this License, as
+   the Additional Use Grant; or (b) insert the text "None".
+
+3. To specify a Change Date.
+
+4. Not to modify this License in any other way.
+
+Notice
+
+The Business Source License (this document, or the "License") is not an Open
+Source license. However, the Licensed Work will eventually be made available
+under an Open Source License, as stated in this License.
+

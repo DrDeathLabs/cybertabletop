@@ -1,0 +1,53 @@
+# Development override — HTTP only (no TLS cert required)
+# Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+#
+# This exposes:
+#   - Frontend dev server: http://localhost:5173
+#   - Backend API:         http://localhost:3001
+#   - PostgreSQL:          localhost:5432 (for local Prisma Studio)
+#
+# Use this for local development where you don't need HTTPS.
+
+version: '3.9'
+
+services:
+  # Expose postgres externally for dev tools (Prisma Studio, pgAdmin)
+  postgres:
+    ports:
+      - '5432:5432'
+    networks:
+      - external
+
+  # In dev, run backend with hot reload
+  backend:
+    command: npm run dev
+    volumes:
+      - ./backend/src:/app/src:ro
+    environment:
+      NODE_ENV: development
+    ports:
+      - '3001:3001'
+    networks:
+      - external
+
+  # In dev, run Vite dev server with HMR
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./frontend/src:/app/src:ro
+      - ./frontend/public:/app/public:ro
+    ports:
+      - '5173:5173'
+    networks:
+      - external
+
+  # Disable nginx in dev — access services directly
+  nginx:
+    profiles:
+      - production-only
+
+networks:
+  external:
+    internal: false
