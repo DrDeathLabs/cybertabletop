@@ -54,6 +54,10 @@ The documents in [docs/](docs/) are NIST SP 800-53 Rev. 5 alignment and assessme
 
 ## Quick Start
 
+For complete setup options, see [docs/INSTALLATION.md](docs/INSTALLATION.md).
+
+For a full product walkthrough, see [docs/USER_GUIDE.md](docs/USER_GUIDE.md).
+
 ### Prerequisites
 
 - Docker Desktop on Windows/macOS, or Docker Engine on Linux
@@ -130,6 +134,8 @@ Registration is invite-gated by default when `REQUIRE_INVITE=true`. Use your con
 
 ## Running an Exercise
 
+For the detailed facilitator/player workflow, see [docs/USER_GUIDE.md](docs/USER_GUIDE.md).
+
 Facilitators:
 
 1. Sign in with a facilitator or admin account.
@@ -205,6 +211,14 @@ are also published with `sha-` tags.
 
 If `docker pull` reports an authorization error, open the repository's Packages
 page in GitHub and make the packages public.
+
+## Documentation
+
+- [Installation Guide](docs/INSTALLATION.md)
+- [User Guide](docs/USER_GUIDE.md)
+- [Security Policy](SECURITY.md)
+- [Commercial Use Terms](COMMERCIAL.md)
+- [Contributing](CONTRIBUTING.md)
 
 ## GitHub Safety Notes
 

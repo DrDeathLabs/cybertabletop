@@ -96,15 +96,19 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Check shell installer syntax
-        run: bash -n install.sh
+        run: |
+          bash -n install.sh
+          bash -n scripts/bootstrap.sh
 
       - name: Check PowerShell installer syntax
         shell: pwsh
         run: |
-          $tokens = $null
-          $errors = $null
-          [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path install.ps1), [ref]$tokens, [ref]$errors) | Out-Null
-          if ($errors.Count -gt 0) {
-            $errors | ForEach-Object { Write-Error "line $($_.Extent.StartLineNumber): $($_.Message)" }
-            exit 1
+          foreach ($file in @("install.ps1", "scripts/bootstrap.ps1")) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $file), [ref]$tokens, [ref]$errors) | Out-Null
+            if ($errors.Count -gt 0) {
+              $errors | ForEach-Object { Write-Error "$file line $($_.Extent.StartLineNumber): $($_.Message)" }
+              exit 1
+            }
           }
