@@ -1,11 +1,11 @@
 blank_issues_enabled: true
 contact_links:
   - name: Security vulnerability
-    url: https://github.com/darrenmdeath/cybertabletop/blob/main/SECURITY.md
+    url: https://github.com/DrDeathLabs/cybertabletop/blob/main/SECURITY.md
     about: Do not open public issues for suspected vulnerabilities.
   - name: Installation and user documentation
-    url: https://github.com/darrenmdeath/cybertabletop/tree/main/docs
+    url: https://github.com/DrDeathLabs/cybertabletop/tree/main/docs
     about: Read setup, production, user, and security documentation.
   - name: Commercial use terms
-    url: https://github.com/darrenmdeath/cybertabletop/blob/main/COMMERCIAL.md
+    url: https://github.com/DrDeathLabs/cybertabletop/blob/main/COMMERCIAL.md
     about: Review permitted internal use and commercial-use restrictions.

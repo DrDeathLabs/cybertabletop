@@ -40,7 +40,7 @@ This is the easiest install path.
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/darrenmdeath/cybertabletop.git
+git clone https://github.com/DrDeathLabs/cybertabletop.git
 cd cybertabletop
 ```
 
@@ -99,7 +99,7 @@ Your browser will warn about the self-signed certificate. That is expected for l
 Use this when you want to build the backend/frontend images locally.
 
 ```bash
-git clone https://github.com/darrenmdeath/cybertabletop.git
+git clone https://github.com/DrDeathLabs/cybertabletop.git
 cd cybertabletop
 ./scripts/bootstrap.sh
 docker compose -p cybertabletop up -d --build
@@ -109,7 +109,7 @@ docker compose -p cybertabletop exec backend npm run db:seed
 Windows PowerShell:
 
 ```powershell
-git clone https://github.com/darrenmdeath/cybertabletop.git
+git clone https://github.com/DrDeathLabs/cybertabletop.git
 cd cybertabletop
 .\scripts\bootstrap.ps1
 docker compose -p cybertabletop up -d --build

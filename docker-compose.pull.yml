@@ -39,7 +39,7 @@ services:
       retries: 3
 
   backend:
-    image: ${CYBERTABLETOP_IMAGE_REGISTRY:-ghcr.io/darrenmdeath}/cybertabletop-backend:${CYBERTABLETOP_IMAGE_TAG:-latest}
+    image: ${CYBERTABLETOP_IMAGE_REGISTRY:-ghcr.io/drdeathlabs}/cybertabletop-backend:${CYBERTABLETOP_IMAGE_TAG:-latest}
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
@@ -85,7 +85,7 @@ services:
       retries: 3
 
   frontend:
-    image: ${CYBERTABLETOP_IMAGE_REGISTRY:-ghcr.io/darrenmdeath}/cybertabletop-frontend:${CYBERTABLETOP_IMAGE_TAG:-latest}
+    image: ${CYBERTABLETOP_IMAGE_REGISTRY:-ghcr.io/drdeathlabs}/cybertabletop-frontend:${CYBERTABLETOP_IMAGE_TAG:-latest}
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
@@ -98,7 +98,7 @@ services:
       retries: 3
 
   nginx:
-    image: ${CYBERTABLETOP_IMAGE_REGISTRY:-ghcr.io/darrenmdeath}/cybertabletop-nginx:${CYBERTABLETOP_IMAGE_TAG:-latest}
+    image: ${CYBERTABLETOP_IMAGE_REGISTRY:-ghcr.io/drdeathlabs}/cybertabletop-nginx:${CYBERTABLETOP_IMAGE_TAG:-latest}
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true

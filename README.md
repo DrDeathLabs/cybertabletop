@@ -216,9 +216,9 @@ cybertabletop/
 
 Prebuilt images are published to GitHub Container Registry:
 
-- `ghcr.io/darrenmdeath/cybertabletop-backend:latest`
-- `ghcr.io/darrenmdeath/cybertabletop-frontend:latest`
-- `ghcr.io/darrenmdeath/cybertabletop-nginx:latest`
+- `ghcr.io/drdeathlabs/cybertabletop-backend:latest`
+- `ghcr.io/drdeathlabs/cybertabletop-frontend:latest`
+- `ghcr.io/drdeathlabs/cybertabletop-nginx:latest`
 
 The `latest` tag is published from the `main` branch. Commit-specific images
 are also published with `sha-` tags.
