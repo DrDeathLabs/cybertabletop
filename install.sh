@@ -399,12 +399,12 @@ generate_secrets() {
 # Pre-fetch Docker images
 # ---------------------------------------------------------------------------
 pull_images() {
-    info "Pre-fetching Docker images (docker compose pull)…"
+    info "Pre-fetching prebuilt Docker images (docker-compose.pull.yml)..."
     cd "${SCRIPT_DIR}"
-    if docker compose pull; then
+    if docker compose -p cybertabletop -f docker-compose.pull.yml pull; then
         success "Docker images pulled."
     else
-        warn "Some images could not be pulled. They will be built/pulled on first 'docker compose up'."
+        warn "Some images could not be pulled. They will be pulled on first 'docker compose -p cybertabletop -f docker-compose.pull.yml up -d'."
     fi
 }
 
@@ -423,7 +423,7 @@ print_success() {
     echo -e "       ${CYAN}nano ${SCRIPT_DIR}/.env${RESET}"
     echo ""
     echo -e "  ${YELLOW}2.${RESET} Start all services:"
-    echo -e "       ${CYAN}docker compose up -d${RESET}"
+    echo -e "       ${CYAN}docker compose -p cybertabletop -f docker-compose.pull.yml up -d${RESET}"
     echo ""
     echo -e "       ${CYAN}Database migrations and built-in scenarios are applied automatically when the backend starts.${RESET}"
     echo ""

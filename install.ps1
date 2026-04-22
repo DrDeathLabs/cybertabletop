@@ -454,15 +454,15 @@ function Set-EnvSecrets {
 # Pre-fetch Docker images
 # ---------------------------------------------------------------------------
 function Invoke-DockerPull {
-    Write-Info "Pre-fetching Docker images (docker compose pull)…"
+    Write-Info "Pre-fetching prebuilt Docker images (docker-compose.pull.yml)..."
     Push-Location $ProjectRoot
     try {
-        docker compose pull
+        docker compose -p cybertabletop -f docker-compose.pull.yml pull
         Write-Success "Docker images pulled."
     }
     catch {
         Write-Warn "Some images could not be pulled: $_"
-        Write-Warn "They will be pulled automatically on first 'docker compose up'."
+        Write-Warn "They will be pulled automatically on first 'docker compose -p cybertabletop -f docker-compose.pull.yml up -d'."
     }
     finally {
         Pop-Location
@@ -487,7 +487,7 @@ function Write-SuccessMessage {
     Write-Host ""
     Write-Host "  2. " -NoNewline -ForegroundColor Yellow
     Write-Host "Start all services:" -ForegroundColor White
-    Write-Host "       docker compose up -d" -ForegroundColor Cyan
+    Write-Host "       docker compose -p cybertabletop -f docker-compose.pull.yml up -d" -ForegroundColor Cyan
     Write-Host ""
     Write-Host "       Database migrations and built-in scenarios are applied automatically when the backend starts." -ForegroundColor DarkGray
     Write-Host ""
