@@ -17,6 +17,8 @@ CyberTabletop is organized around:
 
 A scenario is a reusable exercise template. A session is a live run of a scenario with participants.
 
+![CyberTabletop dashboard](assets/user-guide/dashboard.png)
+
 ## User Roles
 
 | Role | Purpose |
@@ -54,6 +56,8 @@ The Admin panel includes:
 - organization config,
 - AI prompts,
 - AI config.
+
+![Admin security dashboard](assets/user-guide/admin-security-dashboard.png)
 
 ### Security Dashboard
 
@@ -114,6 +118,8 @@ Open Scenarios to browse built-in and custom scenarios.
 
 Built-in scenarios are seeded from the backend and owned by the internal system user.
 
+![Scenario library with built-in exercises](assets/user-guide/scenario-library.png)
+
 For each scenario, facilitators can:
 
 - review title, description, type, and difficulty,
@@ -138,7 +144,19 @@ Keep scenario content realistic but avoid placing real secrets, customer data, o
 
 ## Creating a Session
 
-To run an exercise:
+The Create Session screen supports three exercise paths:
+
+- **From Library**: use a built-in or custom scenario with a fixed inject sequence.
+- **AI Generated**: ask the configured AI provider to create a complete scripted scenario before the exercise starts.
+- **AI-Driven**: run a live adaptive exercise where each inject is generated during the session based on team decisions and facilitator context.
+
+![Create session from library](assets/user-guide/create-session-library.png)
+
+### From Library
+
+Use this path when you want a repeatable exercise from the scenario library. Built-in scenarios are available immediately after install, and custom scenarios created by facilitators appear here as well.
+
+To run a library exercise:
 
 1. Sign in as a facilitator or admin.
 2. Open Scenarios.
@@ -148,6 +166,22 @@ To run an exercise:
 6. Share the join code with participants.
 
 The session lobby shows participants as they join.
+
+### AI Generated
+
+AI Generated creates a complete scripted tabletop session up front. You choose the incident type, difficulty, number of rounds, and scenario details. CyberTabletop sends that request to the active AI provider and saves the generated injects before the exercise begins.
+
+Use AI Generated when you want an AI-assisted scenario that still behaves like a normal scripted exercise. Facilitators can review the generated content before running the session.
+
+![AI Generated session setup](assets/user-guide/create-session-ai-generated.png)
+
+### AI-Driven
+
+AI-Driven creates a fully adaptive exercise. Instead of prebuilding every inject, CyberTabletop generates injects during the live session based on the scenario configuration, previous team decisions, and facilitator prompts.
+
+Use AI-Driven when you want a more dynamic exercise where the situation can respond to participant choices in real time. This mode requires an active AI provider such as Claude or Ollama. The deterministic `scripted` provider is useful for built-in and fixed content, but it is not a substitute for live adaptive generation.
+
+![AI-Driven session setup](assets/user-guide/create-session-ai-driven.png)
 
 ## Participant Join Flow
 
