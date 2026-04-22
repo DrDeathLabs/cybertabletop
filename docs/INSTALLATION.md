@@ -70,6 +70,10 @@ The bootstrap script:
 - prints the registration invite code,
 - creates a local self-signed TLS certificate in `nginx/ssl/`.
 
+Save the printed registration invite code. You need it when creating the first
+administrator account. If you close the terminal, open `.env` and copy the value
+of `INVITE_CODE`.
+
 If you do not want to use the bootstrap script, manually copy `.env.example` to `.env`, replace every `CHANGE_ME` value, and provide `nginx/ssl/cert.pem` plus `nginx/ssl/key.pem`.
 
 ### 3. Pull and start
@@ -88,7 +92,7 @@ API. After the stack is healthy, seed the built-in scenarios:
 docker compose -p cybertabletop -f docker-compose.pull.yml exec backend npm run db:seed
 ```
 
-### 5. Open the app
+### 5. Open the app and create the first admin account
 
 Open:
 
@@ -97,6 +101,19 @@ https://localhost
 ```
 
 Your browser will warn about the self-signed certificate. That is expected for local development. Use a real CA-issued certificate for production.
+
+Register the first user account. The first non-system account automatically
+becomes the `SUPER_ADMIN` account.
+
+When the registration form asks for an invite code, enter the `INVITE_CODE`
+created by the bootstrap script. It is stored in `.env`:
+
+```env
+INVITE_CODE=your-generated-code-here
+```
+
+This requirement is intentional. It prevents someone else from claiming the
+first `SUPER_ADMIN` account if the app is exposed before you finish setup.
 
 ## Path 2: Build From Source With Docker Compose
 
@@ -121,6 +138,9 @@ docker compose -p cybertabletop exec backend npm run db:seed
 ```
 
 This path still does not require Node.js on the host because the Dockerfiles build the app inside containers.
+
+After opening `https://localhost`, register the first user with the generated
+`INVITE_CODE` from `.env`. That first non-system user becomes `SUPER_ADMIN`.
 
 ## Path 3: Optional Full Installer Scripts
 
@@ -288,6 +308,20 @@ Then open `https://localhost:8443`.
 ### Pull fails with unauthorized
 
 The GitHub Container Registry packages may not be public yet. Open the repository's Packages page in GitHub and set each CyberTabletop package visibility to public.
+
+### Registration asks for an invite code on first setup
+
+This is expected. The first non-system account becomes `SUPER_ADMIN`, so
+registration is protected by the generated invite code.
+
+Use the `INVITE_CODE` value in `.env`:
+
+```powershell
+Select-String -Path .env -Pattern '^INVITE_CODE='
+```
+
+Then enter that value into the registration form. Keep `REQUIRE_INVITE=true` for
+internet-facing deployments.
 
 ### Database auth fails
 
