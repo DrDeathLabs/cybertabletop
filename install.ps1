@@ -137,6 +137,14 @@ function Install-Docker {
 
         if (docker compose version 2>$null) {
             Write-Success "Docker Compose plugin available."
+        } else {
+            Write-Fatal "Docker Compose plugin is required. Install or update Docker Desktop, then re-run this script."
+        }
+
+        if (docker info 2>$null) {
+            Write-Success "Docker engine is running."
+        } else {
+            Write-Fatal "Docker Desktop is installed, but the Docker engine is not running. Launch Docker Desktop, wait for 'Engine running', then re-run this script."
         }
         return
     }
@@ -157,6 +165,7 @@ function Install-Docker {
         Write-Warn "  4. Ensure Docker Desktop shows 'Engine running' in the system tray"
         Write-Warn "  5. Re-run this script once Docker is running"
         Write-Host ""
+        Write-Fatal "Docker Desktop setup must be completed before CyberTabletop installation can continue."
     }
     else {
         Write-Host ""
@@ -261,6 +270,25 @@ function New-TlsCertificate {
     }
 
     Write-Info "Generating self-signed TLS certificate (2-year expiry)…"
+
+    if (Test-Command 'docker') {
+        Write-Info "Using Docker OpenSSL container to generate local TLS certificate..."
+        $mount = "${SslDir}:/certs"
+        & docker run --rm -v $mount alpine/openssl req -x509 -nodes -newkey rsa:4096 -sha256 -days 730 `
+            -keyout /certs/key.pem `
+            -out /certs/cert.pem `
+            -subj "/CN=localhost" `
+            -addext "subjectAltName=DNS:localhost,IP:127.0.0.1"
+
+        if (($LASTEXITCODE -eq 0) -and (Test-Path $CertFile) -and (Test-Path $KeyFile)) {
+            Write-Success "TLS certificates written to $SslDir\"
+            Write-Info  "  cert.pem  - public certificate"
+            Write-Info  "  key.pem   - private key (keep this secret)"
+            return
+        }
+
+        Write-Warn "Docker-based certificate generation failed; trying Windows certificate APIs."
+    }
 
     try {
         # Create the certificate in the certificate store
