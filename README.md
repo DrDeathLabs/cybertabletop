@@ -1,36 +1,71 @@
 # CyberTabletop
 
-CyberTabletop is a web application for running scored, role-based cybersecurity incident response tabletop exercises.
+CyberTabletop is an agentic AI cybersecurity tabletop platform for running live, scored incident response exercises.
 
-It is built for security teams that want an interactive alternative to slide-deck tabletop exercises: live facilitated sessions, player decisions from individual devices, real-time scoring, reusable scenarios, and structured debriefs.
+It helps security teams move beyond static slide decks by combining AI-generated scenarios, adaptive injects, role-based player decisions, facilitator controls, real-time scoring, and structured debriefs.
+
+Use it to rehearse ransomware, business email compromise, data breach, insider threat, DDoS, supply-chain, cloud, and custom cyber crisis scenarios with participants joining from their own devices.
 
 ![CyberTabletop dashboard](docs/assets/user-guide/dashboard.png)
 
-## License
+## Agentic AI Exercise Engine
 
-CyberTabletop is source-available under the Business Source License 1.1.
+CyberTabletop can act as an AI exercise designer, adaptive inject generator, and simulation partner while keeping a facilitator in control.
 
-The public license allows internal use by organizations, including commercial organizations, for their own tabletop exercises, security readiness, evaluation, development, testing, education, and research.
+- **AI Generated mode** creates a complete scripted tabletop exercise before launch. Pick the incident type, difficulty, number of rounds, and organization context; CyberTabletop generates a reusable scenario for facilitator review.
+- **AI-Driven mode** runs a fully adaptive exercise. The app generates injects during the live session based on the scenario configuration, facilitator context, and team decisions.
+- **Organization-aware prompts** let admins provide business context so generated exercises feel closer to the environment being trained.
+- **Provider flexibility** supports Anthropic Claude, Ollama, and deterministic scripted content. Ollama can support private/local model workflows.
+- **Facilitator-in-the-loop controls** keep humans responsible for pacing, review, scoring, and debrief.
 
-You may not offer CyberTabletop as a hosted service, managed service, SaaS product, paid commercial offering, white-labeled product, material feature of another commercial tool, or paid consulting/training/service delivery platform unless you have separate written permission from the maintainer.
+![AI Generated session setup](docs/assets/user-guide/create-session-ai-generated.png)
 
-See [LICENSE](LICENSE) and [COMMERCIAL.md](COMMERCIAL.md).
+![AI-Driven session setup](docs/assets/user-guide/create-session-ai-driven.png)
 
-Because the license restricts some production/commercial uses before the Change Date, this project is not "open source" under the OSI Open Source Definition. Each specific version changes to the MIT License four years after that version is first publicly distributed.
+## Why It Is Different
+
+Traditional tabletop exercises are often slide decks and discussion notes. CyberTabletop turns the exercise into an interactive cyber simulation workspace:
+
+- facilitators launch live sessions with join codes and role assignments,
+- players make decisions from their own devices,
+- injects advance the incident over time,
+- scoring and response distribution show how the team reacted,
+- debriefs connect decisions to lessons learned and NIST CSF-oriented gaps,
+- AI can help create, adapt, and pressure-test the exercise instead of starting from a blank page.
 
 ## Features
 
-- Live facilitated tabletop sessions with lobby, join codes, and role assignment
+**AI Exercise Design**
+
+- AI Generated and AI-Driven session modes
+- Anthropic Claude and Ollama provider support
+- Admin-editable AI prompts and provider configuration
+- Organization context for more realistic scenario generation
+- Deterministic scripted mode for built-in content and offline fallback
+
+**Live Tabletop Operations**
+
+- Facilitated sessions with lobby, join codes, and role assignment
 - Role-based player decisions for incident response teams
-- Built-in ransomware, data breach, and insider threat scenarios
+- Built-in ransomware, BEC, DDoS, data breach, insider threat, APT, and supply-chain scenarios
 - Scenario builder for custom phases, injects, and decision options
-- Real-time scoring, leaderboard, scripted feedback, and debrief views
+- Real-time facilitator controls for presenting injects and revealing outcomes
+
+**Scoring and Debrief**
+
+- Real-time scoring, leaderboard, response distribution, and scripted feedback
 - NIST CSF-oriented debrief and gap-analysis outputs
+- Decision history for after-action discussion
+- Structured debrief workflow for turning exercise observations into improvements
+
+**Security and Operations**
+
 - Local authentication plus optional OIDC/SSO
 - Enforced TOTP MFA for privileged roles, with optional MFA for players
-- AI-assisted content paths using scripted responses, Anthropic, or Ollama
+- Role-based authorization and SOC-style audit logging
 - Admin security dashboard for operational posture checks
 - Docker Compose deployment with PostgreSQL, Redis, frontend, backend, and Nginx
+- SBOMs, Docker Scout review notes, and release-hardening documentation
 
 ## Security Posture
 
@@ -60,6 +95,38 @@ Known residual risks and deployment requirements are documented in [SECURITY.md]
 SBOM artifacts are published in [sbom/](sbom/) in CycloneDX JSON and SPDX JSON formats. The latest release-hardening notes are in [docs/RELEASE_SECURITY_REVIEW.md](docs/RELEASE_SECURITY_REVIEW.md).
 
 The documents in [docs/](docs/) are NIST SP 800-53 Rev. 5 alignment and assessment-support materials. They are not a certification, authorization to operate, or independent compliance attestation.
+
+## Use Cases
+
+- SOC and incident response readiness drills
+- Executive cyber crisis simulations
+- Ransomware and business continuity exercises
+- Business email compromise response training
+- Insider threat and data breach workshops
+- Supply-chain and cloud incident exercises
+- University, cyber range, and security classroom labs
+- Internal security awareness and decision-making practice
+
+Internal organizational use is permitted by the source-available license. Hosted service, paid commercial training delivery, resale, white-labeling, and bundling into another commercial tool require separate permission.
+
+## AI Safety Notes
+
+- Facilitators should review AI-generated exercise content before use.
+- Do not submit secrets, credentials, regulated data, or live incident details to external AI providers unless your organization has approved that workflow.
+- Use Ollama or another private model endpoint when exercises require local/private AI processing.
+- The deterministic `scripted` provider does not require an external AI service.
+
+## License
+
+CyberTabletop is source-available under the Business Source License 1.1.
+
+The public license allows internal use by organizations, including commercial organizations, for their own tabletop exercises, security readiness, evaluation, development, testing, education, and research.
+
+You may not offer CyberTabletop as a hosted service, managed service, SaaS product, paid commercial offering, white-labeled product, material feature of another commercial tool, or paid consulting/training/service delivery platform unless you have separate written permission from the maintainer.
+
+See [LICENSE](LICENSE) and [COMMERCIAL.md](COMMERCIAL.md).
+
+Because the license restricts some production/commercial uses before the Change Date, this project is not "open source" under the OSI Open Source Definition. Each specific version changes to the MIT License four years after that version is first publicly distributed.
 
 ## Quick Start
 
