@@ -4,6 +4,8 @@ CyberTabletop is a web application for running scored, role-based cybersecurity 
 
 It is built for security teams that want an interactive alternative to slide-deck tabletop exercises: live facilitated sessions, player decisions from individual devices, real-time scoring, reusable scenarios, and structured debriefs.
 
+![CyberTabletop dashboard](docs/assets/user-guide/dashboard.png)
+
 ## License
 
 CyberTabletop is source-available under the Business Source License 1.1.
