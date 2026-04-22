@@ -489,17 +489,14 @@ function Write-SuccessMessage {
     Write-Host "Start all services:" -ForegroundColor White
     Write-Host "       docker compose up -d" -ForegroundColor Cyan
     Write-Host ""
-    Write-Host "  3. " -NoNewline -ForegroundColor Yellow
-    Write-Host "Seed initial data:" -ForegroundColor White
-    Write-Host "       docker compose exec backend npm run db:seed" -ForegroundColor Cyan
-    Write-Host "       (Database migrations run automatically when the backend starts.)" -ForegroundColor DarkGray
+    Write-Host "       Database migrations and built-in scenarios are applied automatically when the backend starts." -ForegroundColor DarkGray
     Write-Host ""
-    Write-Host "  4. " -NoNewline -ForegroundColor Yellow
+    Write-Host "  3. " -NoNewline -ForegroundColor Yellow
     Write-Host "Open the application:" -ForegroundColor White
     Write-Host "       https://localhost" -ForegroundColor Cyan
     Write-Host "       (Accept the self-signed certificate warning in your browser)" -ForegroundColor Yellow
     Write-Host ""
-    Write-Host "  5. " -NoNewline -ForegroundColor Yellow
+    Write-Host "  4. " -NoNewline -ForegroundColor Yellow
     Write-Host "Register your admin account:" -ForegroundColor White
     Write-Host "       The first account registered is automatically granted SUPER_ADMIN role." -ForegroundColor White
     Write-Host "       Privileged users must complete TOTP MFA setup before using the app." -ForegroundColor White

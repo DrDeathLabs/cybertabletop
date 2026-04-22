@@ -83,14 +83,11 @@ docker compose -p cybertabletop -f docker-compose.pull.yml pull
 docker compose -p cybertabletop -f docker-compose.pull.yml up -d
 ```
 
-### 4. Seed scenarios
+### 4. Confirm automatic scenario setup
 
-The backend container runs Prisma migrations automatically before starting the
-API. After the stack is healthy, seed the built-in scenarios:
-
-```bash
-docker compose -p cybertabletop -f docker-compose.pull.yml exec backend npm run db:seed
-```
+The backend container runs Prisma migrations and refreshes the built-in scripted
+scenario library automatically before starting the API. No separate seed command
+is required.
 
 ### 5. Open the app and create the first admin account
 
@@ -124,7 +121,6 @@ git clone https://github.com/DrDeathLabs/cybertabletop.git
 cd cybertabletop
 ./scripts/bootstrap.sh
 docker compose -p cybertabletop up -d --build
-docker compose -p cybertabletop exec backend npm run db:seed
 ```
 
 Windows PowerShell:
@@ -134,7 +130,6 @@ git clone https://github.com/DrDeathLabs/cybertabletop.git
 cd cybertabletop
 .\scripts\bootstrap.ps1
 docker compose -p cybertabletop up -d --build
-docker compose -p cybertabletop exec backend npm run db:seed
 ```
 
 This path still does not require Node.js on the host because the Dockerfiles build the app inside containers.
@@ -228,7 +223,6 @@ Prebuilt image path:
 git pull
 docker compose -p cybertabletop -f docker-compose.pull.yml pull
 docker compose -p cybertabletop -f docker-compose.pull.yml up -d
-docker compose -p cybertabletop -f docker-compose.pull.yml exec backend npm run db:seed
 ```
 
 Source-build path:
@@ -236,7 +230,6 @@ Source-build path:
 ```bash
 git pull
 docker compose -p cybertabletop up -d --build
-docker compose -p cybertabletop exec backend npm run db:seed
 ```
 
 ## Backup and Restore

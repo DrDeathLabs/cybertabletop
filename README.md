@@ -116,16 +116,11 @@ By default, Nginx binds only to localhost:
 
 To expose the app behind a trusted reverse proxy or edge load balancer, configure `HTTP_BIND`, `HTTPS_BIND`, `FRONTEND_URL`, `CORS_ORIGINS`, and TLS settings deliberately.
 
-### 3. Seed built-in scenarios
+### 3. Built-in scenarios
 
-The backend container runs Prisma migrations automatically before starting.
-After the stack is healthy, seed the built-in scenarios:
-
-```bash
-docker compose -p cybertabletop -f docker-compose.pull.yml exec backend npm run db:seed
-```
-
-If you started the source-build compose file instead, omit `-f docker-compose.pull.yml`.
+The backend container runs Prisma migrations and refreshes the built-in scripted
+scenario library automatically before starting. No separate seed command is
+required for a normal Docker install.
 
 ### 4. Open the app
 

@@ -46,5 +46,5 @@ USER appuser
 
 EXPOSE 3001
 
-# Apply migrations, then start the application.
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/index.js"]
+# Apply migrations, refresh built-in scripted scenarios, then start the application.
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/seed.js && node dist/index.js"]
