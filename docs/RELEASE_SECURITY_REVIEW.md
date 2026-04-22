@@ -18,14 +18,14 @@ This review records the release-hardening checks performed against the local Cyb
 
 ## Tooling
 
-- Docker Scout CLI `v1.20.3` for SBOM generation
+- Docker Scout CLI `v1.20.3` for SBOM generation and CVE scanning
 - Grype `0.111.0` for local image vulnerability scanning
 - Gitleaks for repository secret scanning
 - OWASP ZAP baseline scan
 - npm audit
 - Vitest, TypeScript build, ESLint, Docker Compose health checks
 
-Docker Scout CVE scanning was attempted, but the installed Docker Scout CLI requires Docker Hub/Desktop authentication for CVE reports in this environment. Docker Scout SBOM generation completed successfully without authentication.
+Docker Scout CVE scanning requires Docker Hub/Desktop authentication. It was completed after Docker Hub login was available.
 
 ## Remediation Completed
 
@@ -45,7 +45,17 @@ Docker Scout CVE scanning was attempted, but the installed Docker Scout CLI requ
 
 ## Vulnerability Scan Summary
 
-Grype local image scan results after remediation:
+Docker Scout image scan results after remediation:
+
+| Image | Findings | Fixable | Severity Summary |
+| --- | ---: | ---: | --- |
+| `cybertabletop-backend:latest` | 1 | 0 critical/high fixable | 1 medium |
+| `cybertabletop-frontend:latest` | 1 | 0 critical/high fixable | 1 medium |
+| `cybertabletop-nginx:latest` | 1 | 0 critical/high fixable | 1 medium |
+| `redis:8-alpine` | 1 | 0 critical/high fixable | 1 medium |
+| `postgres:16-alpine` | 27 | 11 critical/high fixable in upstream image component | 1 critical, 10 high, 15 medium, 1 low |
+
+Grype local image scan results were also captured as a cross-check:
 
 | Image | Findings | Fixable | Severity Summary |
 | --- | ---: | ---: | --- |
@@ -55,9 +65,9 @@ Grype local image scan results after remediation:
 | `redis:8-alpine` | 4 | 0 | 3 medium, 1 low |
 | `postgres:16-alpine` | 33 | 30 | 2 critical, 14 high, 16 medium, 1 low |
 
-The remaining CyberTabletop-owned image findings are non-fixable Alpine `busybox` advisories in the current base images. Redis residual findings are also non-fixable in the current official image.
+The remaining CyberTabletop-owned image findings are Alpine `busybox` advisories in the current base images. Docker Scout reports one medium `busybox` finding per app image and no fixed critical/high CVEs for the app-owned images. Redis has the same one medium `busybox` finding in Docker Scout.
 
-The PostgreSQL findings are in the official `postgres:16-alpine` image, primarily the bundled `/usr/local/bin/gosu` binary. PostgreSQL major version changes were not applied because switching database majors can break existing volumes and the tested newer official tags did not materially reduce the scanner result. Operators should continue to track official PostgreSQL image rebuilds and update when the upstream image is patched.
+The PostgreSQL findings are in the official `postgres:16-alpine` image, primarily the bundled `/usr/local/bin/gosu` binary. Docker Scout recommendations report the detected base image as current, so this is not fixable from the CyberTabletop application Dockerfiles without replacing or rebuilding the official PostgreSQL image. PostgreSQL major version changes were not applied because switching database majors can break existing volumes and the tested newer official tags did not materially reduce the scanner result. Operators should continue to track official PostgreSQL image rebuilds and update when the upstream image is patched.
 
 ## ZAP Baseline Summary
 
@@ -89,6 +99,7 @@ Completed successfully:
 - Playwright E2E suite: 7 tests passed
 - Gitleaks repository scan with project config
 - Docker Scout SBOM generation in CycloneDX and SPDX formats
+- Docker Scout CVE scan after Docker Hub login
 
 ## SBOM
 
