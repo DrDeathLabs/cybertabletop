@@ -41,14 +41,10 @@ function New-RandomBase64 {
     [Convert]::ToBase64String($buffer)
 }
 
-function Require-Command {
+function Test-Command {
     param([string]$Name)
-    if (-not (Get-Command $Name -ErrorAction SilentlyContinue)) {
-        throw "Missing required command: $Name. Install OpenSSL or use the full install.ps1 helper."
-    }
+    $null -ne (Get-Command $Name -ErrorAction SilentlyContinue)
 }
-
-Require-Command openssl
 
 if (Test-Path $EnvFile) {
     Write-Host ".env already exists; leaving it unchanged."
@@ -86,13 +82,27 @@ if ((Test-Path $CertPath) -and (Test-Path $KeyPath)) {
     Write-Host "Local TLS certificate already exists; leaving it unchanged."
 } else {
     Write-Host "Generating local self-signed TLS certificate for localhost..."
-    & openssl req -x509 -nodes -newkey rsa:4096 -sha256 -days 365 `
-        -keyout $KeyPath `
-        -out $CertPath `
-        -subj "/CN=localhost" `
-        -addext "subjectAltName=DNS:localhost,IP:127.0.0.1"
+
+    if (Test-Command openssl) {
+        & openssl req -x509 -nodes -newkey rsa:4096 -sha256 -days 365 `
+            -keyout $KeyPath `
+            -out $CertPath `
+            -subj "/CN=localhost" `
+            -addext "subjectAltName=DNS:localhost,IP:127.0.0.1"
+    } elseif (Test-Command docker) {
+        Write-Host "OpenSSL is not on PATH; using Docker to generate the certificate..."
+        $mount = "${SslDir}:/certs"
+        & docker run --rm -v $mount alpine/openssl req -x509 -nodes -newkey rsa:4096 -sha256 -days 365 `
+            -keyout /certs/key.pem `
+            -out /certs/cert.pem `
+            -subj "/CN=localhost" `
+            -addext "subjectAltName=DNS:localhost,IP:127.0.0.1"
+    } else {
+        throw "Missing required command: openssl or docker. Install Docker Desktop, install OpenSSL, or use the full install.ps1 helper."
+    }
+
     if ($LASTEXITCODE -ne 0) {
-        throw "OpenSSL certificate generation failed."
+        throw "TLS certificate generation failed."
     }
     Write-Host "Created nginx/ssl/cert.pem and nginx/ssl/key.pem"
 }

@@ -19,7 +19,11 @@ All install paths require:
 
 - Docker Desktop on Windows/macOS, or Docker Engine on Linux
 - Docker Compose v2
-- OpenSSL if using the included bootstrap scripts to generate local TLS certificates
+- OpenSSL only if you use the Linux/macOS bootstrap script to generate local TLS certificates
+
+On Windows, `scripts/bootstrap.ps1` uses local OpenSSL when it is available. If
+OpenSSL is not installed, it uses Docker to run an OpenSSL container for local
+certificate generation.
 
 CyberTabletop is not Windows-only. The application runs in Linux containers and works on Windows, macOS, and Linux hosts that can run Docker.
 
