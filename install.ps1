@@ -447,6 +447,7 @@ function Set-EnvSecrets {
     $MfaEncryptionKey = New-SecureBase64 32       # 32-byte base64 key
     $PostgresPassword = New-SecureAlphanumeric 32
     $RedisPassword    = New-SecureAlphanumeric 32
+    $InviteCode       = New-SecureAlphanumeric 48
 
     function Update-EnvVar {
         param([string]$File, [string]$Key, [string]$Value)
@@ -468,6 +469,7 @@ function Set-EnvSecrets {
     Update-EnvVar -File $EnvFile -Key 'MFA_ENCRYPTION_KEY'  -Value $MfaEncryptionKey
     Update-EnvVar -File $EnvFile -Key 'POSTGRES_PASSWORD'   -Value $PostgresPassword
     Update-EnvVar -File $EnvFile -Key 'REDIS_PASSWORD'      -Value $RedisPassword
+    Update-EnvVar -File $EnvFile -Key 'INVITE_CODE'         -Value $InviteCode
 
     Write-Success "Secrets written to .env"
     Write-Info "  JWT_SECRET:          $($JwtSecret.Substring(0,16))… (truncated)"
@@ -476,6 +478,9 @@ function Set-EnvSecrets {
     Write-Info "  MFA_ENCRYPTION_KEY:  $($MfaEncryptionKey.Substring(0,8))… (truncated)"
     Write-Info "  POSTGRES_PASSWORD:   $($PostgresPassword.Substring(0,8))… (truncated)"
     Write-Info "  REDIS_PASSWORD:      $($RedisPassword.Substring(0,8))… (truncated)"
+    Write-Info "  INVITE_CODE:         $InviteCode"
+    Write-Host ""
+    Write-Warn "Save this INVITE_CODE. Use it when registering the first SUPER_ADMIN account."
 }
 
 # ---------------------------------------------------------------------------

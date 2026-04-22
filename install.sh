@@ -359,6 +359,7 @@ generate_secrets() {
     MFA_ENCRYPTION_KEY=$(openssl rand -base64 32)
     POSTGRES_PASSWORD=$(gen_alnum32)
     REDIS_PASSWORD=$(gen_alnum32)
+    INVITE_CODE=$(openssl rand -base64 72 | tr -dc 'A-Za-z0-9' | head -c 48)
 
     # Replace placeholder values in .env
     # Works for both "KEY=PLACEHOLDER" and "KEY=changeme" patterns
@@ -382,6 +383,7 @@ generate_secrets() {
     replace_env_var "MFA_ENCRYPTION_KEY"  "${MFA_ENCRYPTION_KEY}"
     replace_env_var "POSTGRES_PASSWORD"   "${POSTGRES_PASSWORD}"
     replace_env_var "REDIS_PASSWORD"      "${REDIS_PASSWORD}"
+    replace_env_var "INVITE_CODE"         "${INVITE_CODE}"
 
     # Remove sed backup file
     rm -f "${ENV_FILE}.bak"
@@ -393,6 +395,9 @@ generate_secrets() {
     info "  MFA_ENCRYPTION_KEY:  ${MFA_ENCRYPTION_KEY:0:8}… (truncated)"
     info "  POSTGRES_PASSWORD:   ${POSTGRES_PASSWORD:0:8}… (truncated)"
     info "  REDIS_PASSWORD:      ${REDIS_PASSWORD:0:8}… (truncated)"
+    info "  INVITE_CODE:         ${INVITE_CODE}"
+    echo ""
+    warn "Save this INVITE_CODE. Use it when registering the first SUPER_ADMIN account."
 }
 
 # ---------------------------------------------------------------------------
