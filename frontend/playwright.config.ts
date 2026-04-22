@@ -1,5 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const browserChannel = process.env.E2E_BROWSER_CHANNEL;
+
 export default defineConfig({
   testDir: './e2e',
   globalSetup: './e2e/support/global-setup.ts',
@@ -20,10 +22,10 @@ export default defineConfig({
   },
   projects: [
     {
-      name: 'edge',
+      name: 'chromium',
       use: {
         ...devices['Desktop Chrome'],
-        channel: process.env.E2E_BROWSER_CHANNEL ?? 'msedge',
+        ...(browserChannel ? { channel: browserChannel } : {}),
       },
     },
   ],

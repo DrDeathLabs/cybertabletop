@@ -55,8 +55,9 @@ test('facilitator and player can create, join, start, play, and reveal a scripte
     await playerPage.getByRole('button', { name: /Submit Decision/ }).click();
     await expect(playerPage.getByRole('heading', { name: 'Decision Submitted' })).toBeVisible();
 
-    await expect(facilitatorPage.getByText('1 / 1')).toBeVisible();
-    await facilitatorPage.getByRole('button', { name: 'Reveal Results' }).click();
+    const revealButton = facilitatorPage.getByRole('button', { name: 'Reveal Results' });
+    await expect(revealButton).toBeEnabled();
+    await revealButton.click();
 
     await expect(facilitatorPage.getByRole('heading', { name: 'Response Distribution' })).toBeVisible();
     await expect(facilitatorPage.getByText(player.displayName).first()).toBeVisible();

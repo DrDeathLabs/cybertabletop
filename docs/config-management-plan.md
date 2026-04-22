@@ -20,8 +20,8 @@ This Configuration Management Plan (CMP) establishes policies and procedures for
 | React | 18.3.x | npm registry |
 | Express | 4.21.x | npm registry |
 | PostgreSQL | 16 | Official Docker image `postgres:16-alpine` |
-| Redis | 7 | Official Docker image `redis:7-alpine` |
-| Nginx | 1.27 (Alpine) | Official Docker image `nginx:alpine` |
+| Redis | 8 | Official Docker image `redis:8-alpine` |
+| Nginx | 1.29 (Alpine slim) | Official Docker image `nginx:alpine-slim` |
 | Prisma ORM | 5.22.x | npm registry |
 | Socket.io | 4.8.x | npm registry |
 
@@ -32,7 +32,7 @@ This Configuration Management Plan (CMP) establishes policies and procedures for
 - Strong cipher suite (ECDHE + AES-GCM + SHA384)
 - HSTS with 1-year max-age + preload
 - Content-Security-Policy: restrictive baseline with `object-src 'none'`, `base-uri 'self'`, and same-origin defaults
-- The bundled localhost configuration intentionally omits `X-Frame-Options` and `frame-ancestors` so embedded local preview browsers can load the app. Standalone public deployments should add clickjacking protection at the public edge, for example `Content-Security-Policy: frame-ancestors 'none'`.
+- The bundled Nginx configuration sets `X-Frame-Options: SAMEORIGIN` and CSP `frame-ancestors 'self'` for clickjacking protection.
 - Rate limiting: 60 req/min general, 10 req/min auth endpoints
 
 **Backend (Express):**
@@ -178,8 +178,8 @@ Only the following software is approved for inclusion in the production deployme
 **Runtime:**
 - `node:20-alpine` (official Docker image)
 - `postgres:16-alpine` (official Docker image)
-- `redis:7-alpine` (official Docker image)
-- `nginx:alpine` (official Docker image)
+- `redis:8-alpine` (official Docker image)
+- `nginx:alpine-slim` (official Docker image)
 
 **npm Production Dependencies (backend):**
 See `backend/package.json` `dependencies` section — all from official npm registry.

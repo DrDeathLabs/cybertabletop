@@ -37,10 +37,11 @@ Do not open a public issue for a suspected vulnerability. Contact the project ma
 - TOTP secrets are encrypted at rest with `MFA_ENCRYPTION_KEY`.
 - MFA recovery codes are shown once and stored only as bcrypt hashes.
 - Backend, frontend, database, Redis, and Nginx containers use `no-new-privileges`.
-- Security headers and CSP are emitted at the Nginx edge. The bundled localhost
-  config omits anti-frame headers so embedded preview browsers can load the app;
-  standalone public deployments should add `Content-Security-Policy:
-  frame-ancestors 'none'` at the public edge unless embedding is required.
+- Security headers and CSP are emitted at the Nginx edge, including HSTS,
+  `X-Frame-Options: SAMEORIGIN`, CSP `frame-ancestors 'self'`,
+  `Cross-Origin-Opener-Policy`, `Cross-Origin-Embedder-Policy`, and
+  `Cross-Origin-Resource-Policy`.
+- SBOM artifacts are included in `sbom/` for the application and runtime images.
 
 ## Known Residual Risks
 
@@ -48,3 +49,4 @@ Do not open a public issue for a suspected vulnerability. Contact the project ma
 - AI provider base URLs can connect the backend to external services; restrict admin access and avoid private/internal endpoints unless explicitly required.
 - Local password reset and email verification workflows are not currently implemented; use invite-gated registration, admin-led account management, or OIDC/SSO for stronger account lifecycle control.
 - Player MFA is optional. Operators with stricter requirements should mandate MFA through OIDC or operational policy for all user roles.
+- Current official Alpine-based images may report non-fixable Alpine package findings until upstream images are rebuilt. See `docs/RELEASE_SECURITY_REVIEW.md` for the latest scan notes.

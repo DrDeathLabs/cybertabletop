@@ -403,7 +403,7 @@ Objective: Verify that data in transit is properly protected.
 Objective: Verify that security response headers are correctly configured.
 - Content-Security-Policy: verify presence and restrictiveness
 - X-Content-Type-Options: verify "nosniff" is set
-- Clickjacking protection: verify `frame-ancestors` or equivalent control is applied at the public edge for standalone deployments. The bundled localhost config intentionally omits anti-frame headers so embedded local preview browsers can load the app.
+- Clickjacking protection: verify `frame-ancestors` or equivalent control is applied at the public edge. The bundled Nginx config sets `X-Frame-Options: SAMEORIGIN` and CSP `frame-ancestors 'self'`.
 - Referrer-Policy: verify appropriate referrer policy
 - Permissions-Policy: verify unnecessary browser features are disabled
 - Server header: verify server version information is not exposed

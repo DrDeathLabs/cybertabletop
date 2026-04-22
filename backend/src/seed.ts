@@ -41,6 +41,15 @@ async function upsertBuiltInScenario(seed: ReturnType<typeof buildLibraryScenari
   };
 
   if (existing) {
+    const sessionCount = await prisma.session.count({ where: { scenarioId: seed.id } });
+    if (sessionCount > 0) {
+      await prisma.scenario.update({
+        where: { id: seed.id },
+        data: sharedData,
+      });
+      return;
+    }
+
     await prisma.inject.deleteMany({ where: { scenarioId: seed.id } });
     await prisma.scenario.update({
       where: { id: seed.id },

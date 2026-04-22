@@ -15,7 +15,7 @@ COPY . .
 RUN npm run build
 
 # ── Production: lightweight Nginx ───────────────────────────────────────
-FROM nginx:alpine AS production
+FROM nginx:alpine-slim AS production
 
 # Security: run as non-root (NIST AC-6)
 RUN adduser -D -u 1001 appuser && \

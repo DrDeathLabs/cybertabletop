@@ -389,7 +389,8 @@ router.get('/security-posture', requireAuth, requireAdmin, async (req: AuthReque
 
   // â”€â”€ Nginx header evaluation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const nh = nginxProbe.headers;
-  const hasXFrame       = nh['x-frame-options']?.toLowerCase().includes('deny') ?? false;
+  const xFrameHeader    = nh['x-frame-options']?.toLowerCase() ?? '';
+  const hasXFrame       = xFrameHeader.includes('deny') || xFrameHeader.includes('sameorigin');
   const hasCsp          = !!nh['content-security-policy'];
   const hasFrameAncestors = nh['content-security-policy']?.toLowerCase().includes('frame-ancestors') ?? false;
   const hasXCTO         = nh['x-content-type-options'] === 'nosniff';
@@ -661,7 +662,7 @@ router.get('/security-posture', requireAuth, requireAdmin, async (req: AuthReque
       evidenceSource:
         `Live infrastructure probe: HTTP HEAD nginx:80 headers: ${JSON.stringify({ 'x-frame-options': nh['x-frame-options'], 'content-security-policy': nh['content-security-policy'], 'x-content-type-options': nh['x-content-type-options'], 'referrer-policy': nh['referrer-policy'], 'permissions-policy': nh['permissions-policy'] })}. Static config: nginx.conf ssl_protocols TLSv1.2 TLSv1.3, HSTS max-age=31536000. Helmet.js hsts config in middleware/security.ts.`,
       complianceNarrative:
-        'TLS 1.2/1.3 encryption is enforced by Nginx with ECDHE cipher suites. HSTS (max-age=1 year, includeSubDomains, preload) prevents protocol downgrade attacks. Nginx and Helmet.js jointly apply security headers on responses. The bundled localhost configuration intentionally omits anti-frame headers so embedded preview browsers can load the app; standalone public deployments should add X-Frame-Options or CSP frame-ancestors at the public edge. Cookies use httpOnly=true, sameSite=strict, and secure=true in production. The server version is hidden (server_tokens off in Nginx, X-Powered-By disabled in Express).',
+        'TLS 1.2/1.3 encryption is enforced by Nginx with ECDHE cipher suites. HSTS (max-age=1 year, includeSubDomains, preload) prevents protocol downgrade attacks. Nginx and Helmet.js jointly apply security headers on responses, including X-Frame-Options and CSP frame-ancestors for clickjacking protection. Cookies use httpOnly=true, sameSite=strict, and secure=true in production. The server version is hidden (server_tokens off in Nginx, X-Powered-By disabled in Express).',
       remediation:
         !isProduction
           ? 'System is running in non-production mode. TLS enforcement is reduced. Ensure NODE_ENV=production in .env before deploying to production environments.'
@@ -754,7 +755,7 @@ router.get('/security-posture', requireAuth, requireAdmin, async (req: AuthReque
       evidenceSource:
         `Live infrastructure probe nginx:80 headers: x-frame-options="${nh['x-frame-options'] ?? 'N/A'}", content-security-policy="${nh['content-security-policy'] ? 'present' : 'N/A'}", x-content-type-options="${nh['x-content-type-options'] ?? 'N/A'}", referrer-policy="${nh['referrer-policy'] ?? 'N/A'}", permissions-policy="${nh['permissions-policy'] ? 'present' : 'N/A'}". Code audit: middleware/security.ts setupSecurity() + index.ts startup env validation.`,
       complianceNarrative:
-        'Security hardening is applied at startup and enforced throughout. Helmet.js configures HSTS, CSP, X-Content-Type-Options, and Referrer-Policy. Nginx applies edge headers as defense-in-depth. The bundled localhost profile omits anti-frame headers for embedded preview compatibility; standalone public deployments should enforce frame-ancestors or X-Frame-Options at the public edge. Express disables X-Powered-By. Startup validation requires strong JWT secrets and MFA_ENCRYPTION_KEY in production.',
+        'Security hardening is applied at startup and enforced throughout. Helmet.js configures HSTS, CSP, X-Content-Type-Options, and Referrer-Policy. Nginx applies edge headers as defense-in-depth, including frame-ancestors and X-Frame-Options. Express disables X-Powered-By. Startup validation requires strong JWT secrets and MFA_ENCRYPTION_KEY in production.',
       remediation:
         !nginxHeaderPass
           ? 'Security headers not detected from Nginx probe. Verify nginx container is running and nginx.conf add_header directives include the "always" flag. Reload nginx after config changes: docker compose exec nginx nginx -s reload'

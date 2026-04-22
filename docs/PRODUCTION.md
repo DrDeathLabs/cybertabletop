@@ -87,6 +87,6 @@ Before public launch, verify:
 - Only nginx is exposed externally
 - HTTPS uses a trusted certificate
 - `FRONTEND_URL` and `CORS_ORIGINS` match the real domain
-- If the public app is not embedded in another portal, add clickjacking protection at the public edge, such as `Content-Security-Policy: frame-ancestors 'none'`
+- Confirm clickjacking protection is present at the public edge. The bundled Nginx config sets `X-Frame-Options: SAMEORIGIN` and CSP `frame-ancestors 'self'`.
 - privileged MFA coverage is 100% in the Security Dashboard
 - a database backup has been restored successfully

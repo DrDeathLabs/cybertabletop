@@ -49,15 +49,15 @@ Current hardening includes:
 - route-level input validation
 - rate limiting
 - audit logging
-- Nginx security headers and CSP. The bundled localhost config intentionally
-  does not set `X-Frame-Options` or `frame-ancestors` so embedded local preview
-  browsers can load the app; standalone public deployments should add
-  clickjacking protection at their public edge.
+- Nginx security headers and CSP, including clickjacking protection,
+  cross-origin isolation headers, and HSTS on HTTPS responses.
 - loopback-only Docker port bindings by default
 - no direct host exposure for PostgreSQL or Redis
 - SSRF protections for organization website fetches
 
 Known residual risks and deployment requirements are documented in [SECURITY.md](SECURITY.md).
+
+SBOM artifacts are published in [sbom/](sbom/) in CycloneDX JSON and SPDX JSON formats. The latest release-hardening notes are in [docs/RELEASE_SECURITY_REVIEW.md](docs/RELEASE_SECURITY_REVIEW.md).
 
 The documents in [docs/](docs/) are NIST SP 800-53 Rev. 5 alignment and assessment-support materials. They are not a certification, authorization to operate, or independent compliance attestation.
 

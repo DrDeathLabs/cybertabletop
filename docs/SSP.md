@@ -708,7 +708,7 @@ Implementation status codes:
 #### CM-7 — Least Functionality
 **Status:** Implemented
 
-**Implementation:** CTT containers are built from minimal base images (node:20-alpine, nginx:alpine, postgres:16-alpine, and redis:7-alpine) to reduce the attack surface. Unnecessary OS packages are not installed. Only required ports are exposed. The Nginx configuration exposes frontend, API, health, and Socket.io routes. The Node.js application does not expose debug endpoints in production. Package dependencies are audited through npm audit and CI checks.
+**Implementation:** CTT containers are built from minimal base images (node:20-alpine, nginx:alpine-slim, postgres:16-alpine, and redis:8-alpine) to reduce the attack surface. Unnecessary OS packages are not installed. The backend runtime image removes global npm/npx after dependency installation and does not install curl. Only required ports are exposed. The Nginx configuration exposes frontend, API, health, and Socket.io routes. The Node.js application does not expose debug endpoints in production. Package dependencies are audited through npm audit and CI checks.
 
 **Responsible Role:** Application Developer, System Administrator
 

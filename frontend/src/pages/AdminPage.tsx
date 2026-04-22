@@ -611,6 +611,7 @@ function SecurityDashboardTab({ onSwitchToAudit }: { onSwitchToAudit?: (action: 
   const [issuesExpanded, setIssuesExpanded]   = useState(false);
   const [countdown, setCountdown]       = useState(REFRESH_INTERVAL_S);
   const [showActiveUsers, setShowActiveUsers] = useState(false);
+  const [activeUsersTimeBaseMs, setActiveUsersTimeBaseMs] = useState(0);
   const countdownRef                    = useRef(REFRESH_INTERVAL_S);
 
   // Count down every second
@@ -840,7 +841,10 @@ function SecurityDashboardTab({ onSwitchToAudit }: { onSwitchToAudit?: (action: 
 
         {/* Active Users (24h) → modal list */}
         <button
-          onClick={() => setShowActiveUsers(true)}
+          onClick={() => {
+            setActiveUsersTimeBaseMs(Date.now());
+            setShowActiveUsers(true);
+          }}
           className="rounded-xl p-4 border bg-slate-900/60 border-slate-700/50 text-left transition-all hover:brightness-110 group"
         >
           <div className="flex items-start justify-between">
@@ -1156,7 +1160,7 @@ function SecurityDashboardTab({ onSwitchToAudit }: { onSwitchToAudit?: (action: 
                   <tbody className="divide-y divide-slate-700/30">
                     {(metrics.activeUsersList ?? []).map((u) => {
                       const loginDate = new Date(u.lastLoginAt);
-                      const minutesAgo = Math.floor((Date.now() - loginDate.getTime()) / 60_000);
+                      const minutesAgo = Math.max(0, Math.floor((activeUsersTimeBaseMs - loginDate.getTime()) / 60_000));
                       const timeLabel =
                         minutesAgo < 2   ? 'just now'
                         : minutesAgo < 60  ? `${minutesAgo}m ago`

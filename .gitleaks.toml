@@ -1,0 +1,6 @@
+title = "CyberTabletop Gitleaks Configuration"
+
+[[allowlists]]
+description = "Historical GitHub Actions dummy MFA key used only for docker compose config validation"
+paths = ['''^\.github/workflows/ci\.yml$''']
+regexes = ['''MFA_ENCRYPTION_KEY:\s*MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=''']

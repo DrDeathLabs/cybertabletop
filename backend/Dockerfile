@@ -7,6 +7,7 @@ WORKDIR /app
 
 # Install openssl — required by Prisma on Alpine
 RUN apk add --no-cache openssl
+RUN npm install -g npm@11.12.1
 
 # Install dependencies
 COPY package*.json ./
@@ -24,14 +25,16 @@ FROM node:20-alpine AS production
 RUN addgroup -g 1001 -S appgroup && \
     adduser -S appuser -u 1001 -G appgroup
 
-# Install openssl (Prisma) and curl (healthcheck)
-RUN apk add --no-cache openssl curl
+# Install openssl for Prisma. Health checks use Node's built-in fetch.
+RUN apk add --no-cache openssl
 
 WORKDIR /app
 
 # Install only production deps
 COPY package*.json ./
-RUN npm ci --omit=dev && npm cache clean --force
+RUN npm ci --omit=dev && \
+    npm cache clean --force && \
+    rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 
 # Copy built artifacts
 COPY --from=builder /app/dist ./dist
@@ -47,4 +50,4 @@ USER appuser
 EXPOSE 3001
 
 # Apply migrations, refresh built-in scripted scenarios, then start the application.
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/seed.js && node dist/index.js"]
+CMD ["sh", "-c", "node node_modules/prisma/build/index.js migrate deploy && node dist/seed.js && node dist/index.js"]
