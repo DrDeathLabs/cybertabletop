@@ -65,9 +65,27 @@ Grype local image scan results were also captured as a cross-check:
 | `redis:8-alpine` | 4 | 0 | 3 medium, 1 low |
 | `postgres:16-alpine` | 33 | 30 | 2 critical, 14 high, 16 medium, 1 low |
 
-The remaining CyberTabletop-owned image findings are Alpine `busybox` advisories in the current base images. Docker Scout reports one medium `busybox` finding per app image and no fixed critical/high CVEs for the app-owned images. Redis has the same one medium `busybox` finding in Docker Scout.
+### Finding Disposition
 
-The PostgreSQL findings are in the official `postgres:16-alpine` image, primarily the bundled `/usr/local/bin/gosu` binary. Docker Scout recommendations report the detected base image as current, so this is not fixable from the CyberTabletop application Dockerfiles without replacing or rebuilding the official PostgreSQL image. PostgreSQL major version changes were not applied because switching database majors can break existing volumes and the tested newer official tags did not materially reduce the scanner result. Operators should continue to track official PostgreSQL image rebuilds and update when the upstream image is patched.
+| Finding | Affected area | Severity | Interpretation | Action |
+| --- | --- | --- | --- | --- |
+| Alpine `busybox` CVE | CyberTabletop backend, frontend, Nginx; Redis | Medium | Inherited from Alpine base images. `busybox` provides basic shell utilities such as `sh`, `cp`, `mkdir`, and `wget`. It is not CyberTabletop application code or an npm dependency. | Accept as upstream base-image residual risk. Rebuild from patched upstream images when Alpine publishes a fixed package. |
+| PostgreSQL `/usr/local/bin/gosu` / Go stdlib findings | Official `postgres:16-alpine` image | Critical/High/Medium/Low | Inherited from the official PostgreSQL image. `gosu` is used by the official image startup process to drop privileges from root to the `postgres` user. Docker Scout reports the detected base image as current. | Track official PostgreSQL image rebuilds and update when patched. Do not replace with a custom DB image unless the project is ready to maintain it. |
+| `style-src 'unsafe-inline'` | Browser CSP | ZAP warning | Retained because the current React/Tailwind UI uses inline style attributes in several views. CSP still blocks object embedding, restricts sources to same-origin, and enforces `frame-ancestors 'self'`. | Accepted for this release. Remove inline style usage in a future frontend hardening pass if stricter CSP is required. |
+| Non-storable content | HTTP cache behavior | ZAP informational warning | Authenticated app shell responses intentionally avoid broad shared caching. Static hashed assets are separately cache-controlled. | Accepted. |
+| Modern web application | SPA behavior | ZAP informational warning | ZAP classifies the app as a modern SPA. This is not a vulnerability by itself. | Accepted. |
+| Local self-signed TLS certificate | Local install default | Operational risk | The bundled localhost certificate is for development and local evaluation only. | Public deployments must use a trusted CA certificate. |
+| Optional player MFA | Authentication policy | Operational risk | Privileged roles require TOTP MFA; `PLAYER` MFA is optional. | Operators requiring MFA for all users should enforce it through OIDC/SSO or local policy. |
+| No local password reset/email verification workflow | Account lifecycle | Operational risk | Local accounts are invite-gated/admin-managed. Full self-service account lifecycle is not implemented. | Use OIDC/SSO, invite-gated registration, and admin-led account management. |
+
+Clean findings:
+
+- CyberTabletop-owned images have 0 critical and 0 high Docker Scout findings.
+- Redis has 0 critical and 0 high Docker Scout findings.
+- Backend npm audit found 0 vulnerabilities.
+- Frontend npm audit found 0 vulnerabilities.
+- Gitleaks found no repository secrets with the project configuration.
+- OWASP ZAP baseline reported 0 failures.
 
 ## ZAP Baseline Summary
 
