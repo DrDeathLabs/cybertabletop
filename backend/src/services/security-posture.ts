@@ -1,4 +1,4 @@
-export type ControlStatus = 'PASS' | 'WARN' | 'FAIL';
+export type ControlStatus = 'PASS' | 'INFO' | 'WARN' | 'FAIL';
 export type OverallPosture = 'GREEN' | 'YELLOW' | 'RED';
 
 export function controlStatus(passCondition: boolean, warnCondition: boolean): ControlStatus {

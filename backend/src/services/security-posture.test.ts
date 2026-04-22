@@ -14,6 +14,7 @@ describe('security posture helpers', () => {
 
     expect(overallStatus([{ status: 'PASS' }, { status: 'WARN' }])).toBe('YELLOW');
     expect(overallStatus([{ status: 'PASS' }, { status: 'FAIL' }])).toBe('RED');
+    expect(overallStatus([{ status: 'PASS' }, { status: 'INFO' }])).toBe('GREEN');
     expect(overallStatus([{ status: 'PASS' }])).toBe('GREEN');
   });
 

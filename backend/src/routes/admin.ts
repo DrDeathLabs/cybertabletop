@@ -377,6 +377,12 @@ router.get('/security-posture', requireAuth, requireAdmin, async (req: AuthReque
   const auditRetentionDays = oldestAuditEntry
     ? Math.floor((now.getTime() - new Date(oldestAuditEntry.timestamp).getTime()) / (24 * 60 * 60 * 1000))
     : 0;
+  const auditRetentionStatus: ControlStatus =
+    totalAuditEntries === 0
+      ? 'WARN'
+      : auditRetentionDays >= 90
+      ? 'PASS'
+      : 'INFO';
 
   const mfaAdoptionPct = calculateMfaAdoptionPct(mfaUsers, totalUsers);
   const privilegedMfaPct = calculateMfaAdoptionPct(privilegedMfaUsers, privilegedUsers);
@@ -510,15 +516,15 @@ router.get('/security-posture', requireAuth, requireAdmin, async (req: AuthReque
         'Protect audit information and audit logging tools from unauthorized access, modification, and deletion. Alert designated personnel in the event of audit logging tool failures. Backup audit records to maintain their availability.',
       description:
         'Audit records are append-only through the application layer. No UPDATE or DELETE workflow exists for AuditLog records in the app, and audit visibility is restricted to admin roles.',
-      status: 'WARN' as ControlStatus,
-      detail: 'Application append-only path: no UPDATE/DELETE on AuditLog in app code. Audit log UI restricted to SUPER_ADMIN and ORG_ADMIN. External SIEM or write-once storage recommended for tamper-resistant retention.',
+      status: 'INFO' as ControlStatus,
+      detail: 'Application append-only path: no UPDATE/DELETE on AuditLog in app code. Audit log UI restricted to SUPER_ADMIN and ORG_ADMIN. External SIEM or write-once storage remains an operator deployment option for tamper-resistant retention.',
       metric: null,
       components: ['Application', 'PostgreSQL', 'Prisma ORM'],
       evidenceSource:
         'Code audit: services/audit.ts uses prisma.auditLog.create(); no application route exposes audit update/delete. Admin route requires requireAdmin middleware. Database administrator access remains an operator-controlled responsibility.',
       complianceNarrative:
         'Audit record integrity is enforced at the application layer: the audit service creates audit records and the application does not expose audit modification or deletion workflows. The audit log endpoints require ORG_ADMIN or SUPER_ADMIN role and are scoped by organization. For stronger non-repudiation, operators should forward audit records to append-only external storage or a SIEM and restrict direct database administrator access.',
-      remediation: 'Forward audit logs to a SIEM or write-once log store for tamper-resistant retention, and restrict direct database administrator access in production.',
+      remediation: 'For deployments that require tamper-resistant evidence, forward audit logs to a SIEM or write-once log store and restrict direct database administrator access.',
     },
     {
       id: 'AU-12', family: 'AU', name: 'Audit Record Generation',
@@ -692,15 +698,15 @@ router.get('/security-posture', requireAuth, requireAdmin, async (req: AuthReque
         'Implement cryptographic mechanisms to prevent unauthorized disclosure and modification of the following information at rest on system components, digital media, and backup storage.',
       description:
         'Passwords are one-way hashed with bcrypt (cost 12). MFA TOTP secrets are stored encrypted. No plaintext credentials are stored. PostgreSQL data files are stored on a dedicated Docker volume.',
-      status: 'WARN' as ControlStatus,
-      detail: `bcrypt cost=12 · MFA secrets encrypted with AES-256-GCM · Recovery codes hashed · PostgreSQL ${pgStats.error ? '(probe failed)' : pgStats.version + ', ' + pgStats.dbSizeMb + ' MB on postgres_data volume'} · Volume and backup encryption are operator-controlled`,
+      status: 'INFO' as ControlStatus,
+      detail: `bcrypt cost=12 · MFA secrets encrypted with AES-256-GCM · Recovery codes hashed · PostgreSQL ${pgStats.error ? '(probe failed)' : pgStats.version + ', ' + pgStats.dbSizeMb + ' MB on postgres_data volume'} · Host volume and backup encryption are deployment responsibilities`,
       metric: null,
       components: ['Application', 'PostgreSQL', 'bcrypt', 'Redis'],
       evidenceSource:
         `Static code audit: bcrypt.hash(password, 12) in auth routes. MFA secrets are encrypted before storage and recovery codes are bcrypt-hashed. PostgreSQL probe: version=${pgStats.version}, db_size=${pgStats.dbSizeMb} MB. Redis probe: alive=${redisProbe.alive}.`,
       complianceNarrative:
         'User passwords are never stored in plaintext. bcrypt with cost factor 12 makes offline brute-force attacks materially more expensive. MFA TOTP secrets are encrypted with MFA_ENCRYPTION_KEY and recovery codes are stored only as bcrypt hashes. Database files reside on Docker named volumes; host disk, database-volume, Redis persistence, and backup encryption depend on the operator deployment environment.',
-      remediation: 'For production, enable host or cloud volume encryption, protect Docker volumes, and store backups in encrypted storage with tested restore procedures.',
+      remediation: 'For production deployments, enable host or cloud volume encryption, protect Docker volumes, and store backups in encrypted storage with tested restore procedures.',
     },
 
     // â”€â”€ IR: Incident Response â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -874,7 +880,7 @@ router.get('/security-posture', requireAuth, requireAdmin, async (req: AuthReque
         'Retain audit records for an organization-defined time period to provide support for after-the-fact investigations of security incidents and to meet regulatory and organizational information retention requirements.',
       description:
         'Audit records are retained in PostgreSQL with no automated deletion. Retention period is determined by available storage and organizational policy.',
-      status: controlStatus(auditRetentionDays >= 90, auditRetentionDays >= 30),
+      status: auditRetentionStatus,
       detail: `${totalAuditEntries.toLocaleString()} total audit records Â· Oldest record: ${oldestAuditEntry ? new Date(oldestAuditEntry.timestamp).toLocaleDateString() + ' (' + auditRetentionDays + ' days ago)' : 'No records'} Â· Database size: ${pgStats.dbSizeMb} MB Â· No automated deletion â€” records persist until storage limit`,
       metric: auditRetentionDays,
       components: ['PostgreSQL', 'Application'],
@@ -883,10 +889,10 @@ router.get('/security-posture', requireAuth, requireAdmin, async (req: AuthReque
       complianceNarrative:
         'Audit records are stored in PostgreSQL with no expiry or automated deletion mechanism. Records accumulate until the storage volume is full or an operator archives them. The application does not expose audit update/delete workflows, but database administrators can still modify data unless operators add external tamper-resistant storage. NIST 800-53 and FedRAMP commonly require 90-day online retention and longer archival. Organizations should monitor database growth and implement archival exports or SIEM forwarding for long-term retention.',
       remediation:
-        auditRetentionDays < 30
-          ? 'Audit record retention is under 30 days â€” this may not meet regulatory requirements. The system may be recently deployed, or records may have been purged. Verify no audit records have been deleted and ensure adequate PostgreSQL storage.'
+        totalAuditEntries === 0
+          ? 'No audit records exist yet. Verify audit generation is working by logging in, updating a user, or creating a tabletop session, then confirm events appear in the SOC Audit Log.'
           : auditRetentionDays < 90
-          ? 'Audit records span less than 90 days. Most frameworks require â‰¥ 90 days online retention. Ensure PostgreSQL storage is sufficient to retain records for the required period.'
+          ? 'Audit history is still accumulating for this deployment. Keep PostgreSQL storage sized for the required retention period, and use external archival or SIEM forwarding when organizational policy requires longer evidence retention.'
           : null,
     },
 

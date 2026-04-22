@@ -46,6 +46,7 @@ import { useAuthStore } from '../stores/auth';
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type UserRole = 'SUPER_ADMIN' | 'ORG_ADMIN' | 'FACILITATOR' | 'PLAYER';
+type ControlStatus = 'PASS' | 'INFO' | 'WARN' | 'FAIL';
 
 interface UserRecord {
   id: string;
@@ -84,7 +85,7 @@ interface ControlCheck {
   description: string;
   nistRef: string;
   nistControlText: string;
-  status: 'PASS' | 'WARN' | 'FAIL';
+  status: ControlStatus;
   detail: string;
   metric: number | null;
   components: string[];
@@ -354,6 +355,58 @@ const CONTROL_AUDIT_LINK: Record<string, { action: string; label: string }> = {
   'AU-12': { action: 'USER_LOGIN',        label: 'View recent audit records' },
 };
 
+function controlStatusStyle(status: ControlStatus) {
+  if (status === 'PASS') {
+    return {
+      bg: 'bg-green-500/10',
+      panelBg: 'bg-green-500/5',
+      border: 'border-green-500/30',
+      text: 'text-green-400',
+      detailText: 'text-green-300',
+      dot: 'bg-green-500',
+      badge: 'bg-green-500/15 text-green-400 border-green-500/30',
+    };
+  }
+  if (status === 'INFO') {
+    return {
+      bg: 'bg-blue-500/10',
+      panelBg: 'bg-blue-500/5',
+      border: 'border-blue-500/30',
+      text: 'text-blue-400',
+      detailText: 'text-blue-300',
+      dot: 'bg-blue-500',
+      badge: 'bg-blue-500/15 text-blue-400 border-blue-500/30',
+    };
+  }
+  if (status === 'WARN') {
+    return {
+      bg: 'bg-yellow-500/10',
+      panelBg: 'bg-yellow-500/5',
+      border: 'border-yellow-500/30',
+      text: 'text-yellow-400',
+      detailText: 'text-yellow-300',
+      dot: 'bg-yellow-500',
+      badge: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30',
+    };
+  }
+  return {
+    bg: 'bg-red-500/10',
+    panelBg: 'bg-red-500/5',
+    border: 'border-red-500/30',
+    text: 'text-red-400',
+    detailText: 'text-red-300',
+    dot: 'bg-red-500',
+    badge: 'bg-red-500/15 text-red-400 border-red-500/30',
+  };
+}
+
+function controlStatusIcon(status: ControlStatus, className = 'w-4 h-4 flex-shrink-0') {
+  if (status === 'PASS') return <CheckCircle2 className={`${className} text-green-400`} />;
+  if (status === 'INFO') return <Info className={`${className} text-blue-400`} />;
+  if (status === 'WARN') return <AlertCircle className={`${className} text-yellow-400`} />;
+  return <XCircle className={`${className} text-red-400`} />;
+}
+
 function ControlDetailPanel({
   control,
   onClose,
@@ -370,12 +423,7 @@ function ControlDetailPanel({
     return () => window.removeEventListener('keydown', handler);
   }, [onClose]);
 
-  const statusColor =
-    control.status === 'PASS'
-      ? { bg: 'bg-green-500/10', border: 'border-green-500/30', text: 'text-green-400', icon: <CheckCircle2 className="w-5 h-5 text-green-400" />, badge: 'bg-green-500/15 text-green-400 border-green-500/30' }
-      : control.status === 'WARN'
-      ? { bg: 'bg-yellow-500/10', border: 'border-yellow-500/30', text: 'text-yellow-400', icon: <AlertCircle className="w-5 h-5 text-yellow-400" />, badge: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30' }
-      : { bg: 'bg-red-500/10',    border: 'border-red-500/30',    text: 'text-red-400',    icon: <XCircle    className="w-5 h-5 text-red-400"    />, badge: 'bg-red-500/15 text-red-400 border-red-500/30' };
+  const statusColor = controlStatusStyle(control.status);
 
   const nistUrl = `https://csrc.nist.gov/projects/cprt/catalog#/cprt/framework/version/SP_800_53_5_1_0/home?element=${control.id}`;
 
@@ -394,7 +442,7 @@ function ControlDetailPanel({
         <div className={`px-6 py-5 border-b border-slate-700/60 flex items-start justify-between flex-shrink-0 ${statusColor.bg}`}>
           <div className="flex items-start gap-3 min-w-0">
             <div className={`p-2 rounded-lg flex-shrink-0 ${statusColor.bg} border ${statusColor.border}`}>
-              {statusColor.icon}
+              {controlStatusIcon(control.status, 'w-5 h-5')}
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2 mb-1 flex-wrap">
@@ -428,13 +476,7 @@ function ControlDetailPanel({
             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">
               Current Assessment
             </p>
-            <div className={`p-3.5 rounded-lg border text-sm leading-relaxed ${
-              control.status === 'PASS'
-                ? 'bg-green-500/5 border-green-500/20 text-green-300'
-                : control.status === 'WARN'
-                ? 'bg-yellow-500/5 border-yellow-500/20 text-yellow-300'
-                : 'bg-red-500/5 border-red-500/20 text-red-300'
-            }`}>
+            <div className={`p-3.5 rounded-lg border text-sm leading-relaxed ${statusColor.panelBg} ${statusColor.border} ${statusColor.detailText}`}>
               {control.detail}
             </div>
           </div>
@@ -497,16 +539,10 @@ function ControlDetailPanel({
           {control.remediation && control.status !== 'PASS' && (
             <div>
               <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">
-                Remediation Steps
+                {control.status === 'INFO' ? 'Deployment Note' : 'Remediation Steps'}
               </p>
-              <div className={`p-3.5 rounded-lg border ${
-                control.status === 'FAIL'
-                  ? 'bg-red-500/5 border-red-500/20'
-                  : 'bg-amber-500/5 border-amber-500/20'
-              }`}>
-                <p className={`text-sm leading-relaxed ${
-                  control.status === 'FAIL' ? 'text-red-300' : 'text-amber-300'
-                }`}>
+              <div className={`p-3.5 rounded-lg border ${statusColor.panelBg} ${statusColor.border}`}>
+                <p className={`text-sm leading-relaxed ${statusColor.detailText}`}>
                   {control.remediation}
                 </p>
               </div>
@@ -641,6 +677,7 @@ function SecurityDashboardTab({ onSwitchToAudit }: { onSwitchToAudit?: (action: 
   }));
 
   const passCount = controls.filter((c) => c.status === 'PASS').length;
+  const infoCount = controls.filter((c) => c.status === 'INFO').length;
   const warnCount = controls.filter((c) => c.status === 'WARN').length;
   const failCount = controls.filter((c) => c.status === 'FAIL').length;
   const mfaPct = metrics.privilegedMfaPct ?? metrics.mfaAdoptionPct;
@@ -667,7 +704,7 @@ function SecurityDashboardTab({ onSwitchToAudit }: { onSwitchToAudit?: (action: 
         ];
         const hasIssues = issueControls.length > 0;
         const bannerConfig = overall === 'GREEN'
-          ? { bg: 'bg-green-500/10', border: 'border-green-500/40', text: 'text-green-400', subtext: 'text-green-400/70', icon: <ShieldCheck className="w-7 h-7 text-green-400" />, iconBg: 'bg-green-500/20 border-green-500/40', title: 'MEASURED POSTURE CLEAR', sub: `All ${controls.length} CyberTabletop checks passing based on current telemetry` }
+          ? { bg: 'bg-green-500/10', border: 'border-green-500/40', text: 'text-green-400', subtext: 'text-green-400/70', icon: <ShieldCheck className="w-7 h-7 text-green-400" />, iconBg: 'bg-green-500/20 border-green-500/40', title: 'MEASURED POSTURE CLEAR', sub: `${passCount} checks passing${infoCount > 0 ? `; ${infoCount} deployment note${infoCount !== 1 ? 's' : ''}` : ''}` }
           : overall === 'YELLOW'
           ? { bg: 'bg-yellow-500/10', border: 'border-yellow-500/40', text: 'text-yellow-400', subtext: 'text-yellow-400/70', icon: <ShieldAlert className="w-7 h-7 text-yellow-400" />, iconBg: 'bg-yellow-500/20 border-yellow-500/40', title: 'REVIEW REQUIRED', sub: `${warnCount} check${warnCount !== 1 ? 's' : ''} need review; ${failCount > 0 ? failCount + ' failing' : 'no failures detected'}` }
           : { bg: 'bg-red-500/10', border: 'border-red-500/40', text: 'text-red-400', subtext: 'text-red-400/70', icon: <ShieldX className="w-7 h-7 text-red-400" />, iconBg: 'bg-red-500/20 border-red-500/40', title: 'ACTION REQUIRED', sub: `${failCount} check${failCount !== 1 ? 's' : ''} failing${warnCount > 0 ? `; ${warnCount} warning${warnCount > 1 ? 's' : ''}` : ''}` };
@@ -938,6 +975,11 @@ function SecurityDashboardTab({ onSwitchToAudit }: { onSwitchToAudit?: (action: 
             <span className="text-slate-500 text-xs">PASS</span>
           </div>
           <div className="flex items-center gap-1.5">
+            <Info className="w-3.5 h-3.5 text-blue-400" />
+            <span className="text-blue-400 font-semibold text-sm">{infoCount}</span>
+            <span className="text-slate-500 text-xs">INFO</span>
+          </div>
+          <div className="flex items-center gap-1.5">
             <AlertCircle className="w-3.5 h-3.5 text-yellow-400" />
             <span className="text-yellow-400 font-semibold text-sm">{warnCount}</span>
             <span className="text-slate-500 text-xs">WARN</span>
@@ -1009,7 +1051,7 @@ function SecurityDashboardTab({ onSwitchToAudit }: { onSwitchToAudit?: (action: 
                 {familyControls.map((c) => (
                   <span
                     key={c.id}
-                    className={`w-2.5 h-2.5 rounded-full ${c.status === 'PASS' ? 'bg-green-500' : c.status === 'WARN' ? 'bg-yellow-500' : 'bg-red-500'}`}
+                    className={`w-2.5 h-2.5 rounded-full ${controlStatusStyle(c.status).dot}`}
                     title={`${c.id}: ${c.status}`}
                   />
                 ))}
@@ -1027,22 +1069,10 @@ function SecurityDashboardTab({ onSwitchToAudit }: { onSwitchToAudit?: (action: 
                   }`}
                 >
                   <div className="flex items-center gap-2.5 flex-shrink-0 w-36">
-                    {control.status === 'PASS' ? (
-                      <CheckCircle2 className="w-4 h-4 text-green-400 flex-shrink-0" />
-                    ) : control.status === 'WARN' ? (
-                      <AlertCircle className="w-4 h-4 text-yellow-400 flex-shrink-0" />
-                    ) : (
-                      <XCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
-                    )}
+                    {controlStatusIcon(control.status)}
                     <span className="text-xs font-mono font-bold text-slate-400">{control.id}</span>
                     <span
-                      className={`text-xs font-bold px-1.5 py-0.5 rounded border ${
-                        control.status === 'PASS'
-                          ? 'bg-green-500/15 text-green-400 border-green-500/30'
-                          : control.status === 'WARN'
-                          ? 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30'
-                          : 'bg-red-500/15 text-red-400 border-red-500/30'
-                      }`}
+                      className={`text-xs font-bold px-1.5 py-0.5 rounded border ${controlStatusStyle(control.status).badge}`}
                     >
                       {control.status}
                     </span>
