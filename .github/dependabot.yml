@@ -8,10 +8,33 @@ updates:
     groups:
       backend-dev-dependencies:
         dependency-type: development
-      backend-patch-and-minor:
         update-types:
           - patch
           - minor
+      backend-patch-and-minor:
+        dependency-type: production
+        update-types:
+          - patch
+          - minor
+    ignore:
+      - dependency-name: "@prisma/client"
+        update-types:
+          - version-update:semver-major
+      - dependency-name: "prisma"
+        update-types:
+          - version-update:semver-major
+      - dependency-name: "express"
+        update-types:
+          - version-update:semver-major
+      - dependency-name: "@types/express"
+        update-types:
+          - version-update:semver-major
+      - dependency-name: "nanoid"
+        update-types:
+          - version-update:semver-major
+      - dependency-name: "openid-client"
+        update-types:
+          - version-update:semver-major
 
   - package-ecosystem: npm
     directory: /frontend
@@ -21,10 +44,18 @@ updates:
     groups:
       frontend-dev-dependencies:
         dependency-type: development
-      frontend-patch-and-minor:
         update-types:
           - patch
           - minor
+      frontend-patch-and-minor:
+        dependency-type: production
+        update-types:
+          - patch
+          - minor
+    ignore:
+      - dependency-name: "tailwindcss"
+        update-types:
+          - version-update:semver-major
 
   - package-ecosystem: github-actions
     directory: /

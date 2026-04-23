@@ -25,10 +25,10 @@
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "docx": "^9.6.1",
-    "dotenv": "^16.4.5",
+    "dotenv": "^17.4.2",
     "express": "^4.21.1",
     "express-async-errors": "^3.1.1",
-    "express-rate-limit": "^7.4.1",
+    "express-rate-limit": "^8.4.0",
     "express-validator": "^7.3.2",
     "helmet": "^8.0.0",
     "jsonrepair": "^3.13.3",
@@ -46,7 +46,7 @@
     "socket.io": "^4.8.3",
     "speakeasy": "^2.0.0",
     "winston": "^3.17.0",
-    "zod": "^3.23.8"
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/compression": "^1.7.5",

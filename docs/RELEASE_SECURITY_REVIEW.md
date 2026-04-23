@@ -33,10 +33,11 @@ Docker Scout CVE scanning requires Docker Hub/Desktop authentication. It was com
 - Applied the open Dependabot maintenance updates on top of current `main` rather than merging stale PR branches.
 - Updated GitHub Actions workflow pins: checkout v6, setup-node v6, CodeQL v4, Docker login v4, Docker build-push v7.
 - Added Dependabot grouping for future GitHub Actions and patch/minor dependency updates.
-- Updated backend runtime dependencies: `@anthropic-ai/sdk` 0.90, `bcryptjs` 3.0, TypeScript 6, Node 25 type definitions, and Nodemailer 8 type definitions.
+- Updated backend runtime/tooling dependencies: `@anthropic-ai/sdk` 0.90, `bcryptjs` 3.0, `dotenv` 17, `express-rate-limit` 8, Zod 4, TypeScript 6, Node 25 type definitions, Nodemailer 8 type definitions, and `@types/ms` 2.
 - Removed the unused direct `uuid` dependency and its type package after npm audit flagged the old direct dependency line.
-- Updated frontend runtime/tooling dependencies: React 19, React DOM 19, React Router 7, TypeScript 6, ESLint 10, React 19 type definitions, Node 25 type definitions, and Vite 8.0.10.
+- Updated frontend runtime/tooling dependencies: React 19, React DOM 19, React Router 7, Lucide React 1.8, `tailwind-merge` 3.5, TypeScript 6, ESLint 10, `eslint-plugin-react-refresh` 0.5, React 19 type definitions, Node 25 type definitions, and Vite 8.0.10.
 - Added the Vite client type declaration needed by TypeScript 6 and fixed ESLint 10 `no-useless-assignment` findings in the debrief page.
+- Deferred Prisma 7 and Tailwind CSS 4 because they are framework migrations, not routine dependency bumps. Prisma 7 failed the current schema/client generation gate and introduced moderate audit findings through Prisma's dev dependency stack; Tailwind CSS 4 requires a separate styling migration pass.
 - Rebuilt application images from current base image digests.
 - Updated the backend runtime image to remove global `npm` and `npx` after dependency installation.
 - Changed backend startup from `npx prisma migrate deploy` to direct Prisma CLI execution through Node.
