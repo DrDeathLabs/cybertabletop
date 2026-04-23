@@ -25,7 +25,7 @@
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "docx": "^9.6.1",
-    "dotenv": "^16.4.5",
+    "dotenv": "^17.4.2",
     "express": "^4.21.1",
     "express-async-errors": "^3.1.1",
     "express-rate-limit": "^7.4.1",
