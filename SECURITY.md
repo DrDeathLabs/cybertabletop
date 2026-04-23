@@ -52,13 +52,14 @@ Do not open a public issue for a suspected vulnerability. Contact the project ma
 
 ## Latest Scan Finding Disposition
 
-The April 22, 2026 release-hardening scan found no critical or high Docker Scout findings in CyberTabletop-owned images. Remaining findings are tracked below.
+The April 23, 2026 release-hardening scan found no critical or high Docker Scout findings in CyberTabletop-owned images. Remaining findings are tracked below.
 
 | Finding | Source | Severity | Disposition |
 | --- | --- | --- | --- |
 | Alpine `busybox` CVE in backend, frontend, Nginx, and Redis images | Docker Scout / Grype | Medium | Inherited from current Alpine base images. `busybox` provides basic Linux shell utilities such as `sh`, `cp`, `mkdir`, and `wget`. It is not CyberTabletop application code or an npm dependency. Rebuild from patched upstream Alpine-based images when available. |
 | PostgreSQL `/usr/local/bin/gosu` / Go stdlib findings | Docker Scout / Grype | Critical/High/Medium/Low in official `postgres:16-alpine` | Inherited from the official PostgreSQL image. `gosu` is used by the official image startup process to drop privileges from root to the `postgres` user. Docker Scout reports the PostgreSQL base image as current, so this is not fixable in CyberTabletop application Dockerfiles without replacing or maintaining a custom PostgreSQL image. Pull patched official PostgreSQL images when available. |
 | `style-src 'unsafe-inline'` | OWASP ZAP baseline | Warning | Retained because the current React/Tailwind UI uses inline style attributes in some views. Other CSP controls remain restrictive, including `object-src 'none'`, `base-uri 'self'`, and `frame-ancestors 'self'`. |
+| Suspicious comments in generated vendor bundle | OWASP ZAP baseline | Informational warning | ZAP matched the word `USER` in minified React Router vendor code. The evidence is generated third-party routing code, not an application comment, secret, or credential disclosure. |
 | Non-storable/cache behavior | OWASP ZAP baseline | Informational warning | Accepted. Authenticated app shells intentionally avoid broad shared caching; static assets are separately cache-controlled. |
 | Modern web application | OWASP ZAP baseline | Informational warning | Accepted. This is ZAP classifying the SPA behavior, not a vulnerability by itself. |
 | Local self-signed TLS certificate | Deployment default | Operational risk | Development/local install convenience only. Public deployments must use a trusted CA certificate. |

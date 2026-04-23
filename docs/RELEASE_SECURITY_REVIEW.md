@@ -1,6 +1,6 @@
 # Release Security Review
 
-Date: April 22, 2026
+Date: April 23, 2026
 
 This review records the release-hardening checks performed against the local CyberTabletop Docker deployment before publishing updates to GitHub.
 
@@ -29,7 +29,14 @@ Docker Scout CVE scanning requires Docker Hub/Desktop authentication. It was com
 
 ## Remediation Completed
 
-- Refreshed backend and frontend npm lockfiles within existing semver ranges.
+- Refreshed backend and frontend npm manifests and lockfiles.
+- Applied the open Dependabot maintenance updates on top of current `main` rather than merging stale PR branches.
+- Updated GitHub Actions workflow pins: checkout v6, setup-node v6, CodeQL v4, Docker login v4, Docker build-push v7.
+- Added Dependabot grouping for future GitHub Actions and patch/minor dependency updates.
+- Updated backend runtime dependencies: `@anthropic-ai/sdk` 0.90, `bcryptjs` 3.0, TypeScript 6, Node 25 type definitions, and Nodemailer 8 type definitions.
+- Removed the unused direct `uuid` dependency and its type package after npm audit flagged the old direct dependency line.
+- Updated frontend runtime/tooling dependencies: React 19, React DOM 19, React Router 7, TypeScript 6, ESLint 10, React 19 type definitions, Node 25 type definitions, and Vite 8.0.10.
+- Added the Vite client type declaration needed by TypeScript 6 and fixed ESLint 10 `no-useless-assignment` findings in the debrief page.
 - Rebuilt application images from current base image digests.
 - Updated the backend runtime image to remove global `npm` and `npx` after dependency installation.
 - Changed backend startup from `npx prisma migrate deploy` to direct Prisma CLI execution through Node.
@@ -72,6 +79,7 @@ Grype local image scan results were also captured as a cross-check:
 | Alpine `busybox` CVE | CyberTabletop backend, frontend, Nginx; Redis | Medium | Inherited from Alpine base images. `busybox` provides basic shell utilities such as `sh`, `cp`, `mkdir`, and `wget`. It is not CyberTabletop application code or an npm dependency. | Accept as upstream base-image residual risk. Rebuild from patched upstream images when Alpine publishes a fixed package. |
 | PostgreSQL `/usr/local/bin/gosu` / Go stdlib findings | Official `postgres:16-alpine` image | Critical/High/Medium/Low | Inherited from the official PostgreSQL image. `gosu` is used by the official image startup process to drop privileges from root to the `postgres` user. Docker Scout reports the detected base image as current. | Track official PostgreSQL image rebuilds and update when patched. Do not replace with a custom DB image unless the project is ready to maintain it. |
 | `style-src 'unsafe-inline'` | Browser CSP | ZAP warning | Retained because the current React/Tailwind UI uses inline style attributes in several views. CSP still blocks object embedding, restricts sources to same-origin, and enforces `frame-ancestors 'self'`. | Accepted for this release. Remove inline style usage in a future frontend hardening pass if stricter CSP is required. |
+| Suspicious comment in generated vendor bundle | React Router vendor bundle | ZAP informational warning | ZAP matched the word `USER` inside minified third-party React Router code in the generated vendor asset. The evidence is not an application source comment, secret, token, or credential. | Accepted. Recheck after future React Router/Vite build changes. |
 | Non-storable content | HTTP cache behavior | ZAP informational warning | Authenticated app shell responses intentionally avoid broad shared caching. Static hashed assets are separately cache-controlled. | Accepted. |
 | Modern web application | SPA behavior | ZAP informational warning | ZAP classifies the app as a modern SPA. This is not a vulnerability by itself. | Accepted. |
 | Local self-signed TLS certificate | Local install default | Operational risk | The bundled localhost certificate is for development and local evaluation only. | Public deployments must use a trusted CA certificate. |
@@ -92,12 +100,13 @@ Clean findings:
 Final OWASP ZAP baseline:
 
 - Failures: 0
-- Warnings: 3 categories
-- Passes: 64
+- Warnings: 4 categories
+- Passes: 63
 
 Residual warnings:
 
 - `style-src 'unsafe-inline'`: retained because the current React/Tailwind UI uses inline style attributes in several views.
+- `Information Disclosure - Suspicious Comments`: informational match in generated third-party React Router vendor code; no application comment or secret was identified.
 - `Non-Storable Content`: informational cache behavior finding; authenticated app shells intentionally avoid broad shared caching.
 - `Modern Web Application`: informational scanner classification.
 

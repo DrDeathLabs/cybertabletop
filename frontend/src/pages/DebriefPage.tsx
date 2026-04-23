@@ -358,16 +358,13 @@ function autoHotWash(data: DebriefData): HotWash {
   const bestInjectNames = strongInjects.slice(0, 3).map(i => `"${i.title}" (${i.avg}%)`);
   const weakInjectNames = weakInjects.slice(0, 3).map(i => `"${i.title}" (${i.phase}, ${i.avg}%)`);
 
-  let overallAssessment = '';
-  if (data.totalDecisions === 0) {
-    overallAssessment = 'No decision data was recorded for this session, so overall readiness could not be fully assessed. The exercise still provided useful scenario discussion and facilitation value, but future sessions should ensure player submissions are captured so readiness conclusions can be supported by evidence.';
-  } else if (overallRate >= 80) {
-    overallAssessment = `The exercise indicates a strong level of response readiness, with ${overallRate}% of decisions aligning to the optimal course of action across ${data.totalDecisions} decisions. Participants demonstrated the ability to interpret evolving incident information, coordinate response actions, and sustain performance through multiple scenario phases with comparatively limited coaching.`;
-  } else if (overallRate >= 60) {
-    overallAssessment = `The exercise indicates a moderate but credible level of response readiness, with ${overallRate}% of decisions aligning to the optimal course of action across ${data.totalDecisions} decisions. Core incident response capability is present, but the results show enough variation in judgment and execution to justify targeted follow-on training before the team can be considered consistently reliable under pressure.`;
-  } else {
-    overallAssessment = `The exercise indicates that incident response readiness needs improvement, with only ${overallRate}% of decisions aligning to the optimal course of action across ${data.totalDecisions} decisions. The results suggest that key roles are not yet applying procedures consistently enough to support a confident real-world response without additional coaching, rehearsal, and playbook reinforcement.`;
-  }
+  const overallAssessment = data.totalDecisions === 0
+    ? 'No decision data was recorded for this session, so overall readiness could not be fully assessed. The exercise still provided useful scenario discussion and facilitation value, but future sessions should ensure player submissions are captured so readiness conclusions can be supported by evidence.'
+    : overallRate >= 80
+      ? `The exercise indicates a strong level of response readiness, with ${overallRate}% of decisions aligning to the optimal course of action across ${data.totalDecisions} decisions. Participants demonstrated the ability to interpret evolving incident information, coordinate response actions, and sustain performance through multiple scenario phases with comparatively limited coaching.`
+      : overallRate >= 60
+        ? `The exercise indicates a moderate but credible level of response readiness, with ${overallRate}% of decisions aligning to the optimal course of action across ${data.totalDecisions} decisions. Core incident response capability is present, but the results show enough variation in judgment and execution to justify targeted follow-on training before the team can be considered consistently reliable under pressure.`
+        : `The exercise indicates that incident response readiness needs improvement, with only ${overallRate}% of decisions aligning to the optimal course of action across ${data.totalDecisions} decisions. The results suggest that key roles are not yet applying procedures consistently enough to support a confident real-world response without additional coaching, rehearsal, and playbook reinforcement.`;
 
   const strengthsParts: string[] = [];
   if (strongFunctions.length > 0) {
@@ -418,14 +415,11 @@ function autoHotWash(data: DebriefData): HotWash {
   }
   const rootCauses = rootCauseParts.join(' ');
 
-  let operationalImpact = '';
-  if (data.totalDecisions === 0) {
-    operationalImpact = 'Because no decision evidence was recorded, the exercise cannot support a strong operational impact estimate. In a live event, that same lack of documented decision flow would also make it harder to evaluate response quality, justify leadership actions, and improve future performance.';
-  } else if (overallRate >= 75 && gapFunctions.length === 0) {
-    operationalImpact = 'If this performance translated into a real incident, the organization would likely be able to stabilize the event with manageable disruption, though response speed and consistency could still be improved. The main residual risk would be uneven execution during more complex or longer-duration incidents.';
-  } else {
-    operationalImpact = `If the same performance pattern carried into a live incident, the organization could face delayed containment, uneven internal coordination, and a higher chance of avoidable business disruption. The combination of ${overallRate}% optimal decisions and the observed low-scoring areas suggests meaningful exposure to slower recovery timelines, leadership friction, and preventable escalation of operational impact.`;
-  }
+  const operationalImpact = data.totalDecisions === 0
+    ? 'Because no decision evidence was recorded, the exercise cannot support a strong operational impact estimate. In a live event, that same lack of documented decision flow would also make it harder to evaluate response quality, justify leadership actions, and improve future performance.'
+    : overallRate >= 75 && gapFunctions.length === 0
+      ? 'If this performance translated into a real incident, the organization would likely be able to stabilize the event with manageable disruption, though response speed and consistency could still be improved. The main residual risk would be uneven execution during more complex or longer-duration incidents.'
+      : `If the same performance pattern carried into a live incident, the organization could face delayed containment, uneven internal coordination, and a higher chance of avoidable business disruption. The combination of ${overallRate}% optimal decisions and the observed low-scoring areas suggests meaningful exposure to slower recovery timelines, leadership friction, and preventable escalation of operational impact.`;
 
   const priorityItems: string[] = [];
   criticalGaps.forEach((f, i) => {
@@ -1617,7 +1611,7 @@ export default function DebriefPage() {
     const walkthrough = hasScenarioWalkthrough ? current++ : null;
     const instructor = hasScriptEvidence ? current++ : null;
     const hotWash = current++;
-    const management = current++;
+    const management = current;
     return { overview, aiAssessment, performance, nist, participants, leaderboard, walkthrough, instructor, hotWash, management };
   })();
 

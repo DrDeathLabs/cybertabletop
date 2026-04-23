@@ -2,7 +2,7 @@
 
 This directory contains Software Bill of Materials artifacts generated from the Docker images used by the CyberTabletop stack.
 
-Generated: April 22, 2026
+Generated: April 23, 2026
 
 Tool: Docker Scout CLI `v1.20.3`
 
