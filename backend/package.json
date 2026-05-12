@@ -17,7 +17,7 @@
     "db:studio": "prisma studio"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.90.0",
+    "@anthropic-ai/sdk": "^0.95.2",
     "@prisma/client": "^5.22.0",
     "@types/pdfkit": "^0.17.5",
     "bcryptjs": "^3.0.3",
@@ -26,16 +26,16 @@
     "cors": "^2.8.5",
     "docx": "^9.6.1",
     "dotenv": "^17.4.2",
-    "express": "^4.21.1",
+    "express": "^4.22.2",
     "express-async-errors": "^3.1.1",
-    "express-rate-limit": "^8.4.0",
+    "express-rate-limit": "^8.5.1",
     "express-validator": "^7.3.2",
     "helmet": "^8.0.0",
     "jsonrepair": "^3.13.3",
     "jsonwebtoken": "^9.0.2",
     "ms": "^2.1.3",
-    "nanoid": "^3.3.7",
-    "nodemailer": "^8.0.5",
+    "nanoid": "^3.3.12",
+    "nodemailer": "^8.0.7",
     "openid-client": "^5.7.0",
     "passport": "^0.7.0",
     "passport-local": "^1.0.0",
@@ -46,7 +46,7 @@
     "socket.io": "^4.8.3",
     "speakeasy": "^2.0.0",
     "winston": "^3.17.0",
-    "zod": "^4.3.6"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/compression": "^1.7.5",
