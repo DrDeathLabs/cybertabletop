@@ -94,6 +94,8 @@ Known residual risks and deployment requirements are documented in [SECURITY.md]
 
 SBOM artifacts are published in [sbom/](sbom/) in CycloneDX JSON and SPDX JSON formats. The latest release-hardening notes are in [docs/RELEASE_SECURITY_REVIEW.md](docs/RELEASE_SECURITY_REVIEW.md).
 
+The May 30, 2026 GitHub vulnerability remediation pass cleared the locally reproducible backend and frontend `npm audit` findings and was verified with code-based build, test, lint, and Docker health checks. See [docs/RELEASE_SECURITY_REVIEW.md](docs/RELEASE_SECURITY_REVIEW.md) for the current dependency-remediation addendum and retained residual risks.
+
 The documents in [docs/](docs/) are NIST SP 800-53 Rev. 5 alignment and assessment-support materials. They are not a certification, authorization to operate, or independent compliance attestation.
 
 ## Use Cases
@@ -255,8 +257,10 @@ npm run dev
 Useful checks:
 
 ```bash
-cd backend && npm audit
-cd frontend && npm audit
+cd backend && npm audit --audit-level=moderate
+cd backend && npm audit --omit=dev
+cd frontend && npm audit --audit-level=moderate
+cd frontend && npm audit --omit=dev
 ```
 
 ## Project Structure

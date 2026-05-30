@@ -52,7 +52,7 @@ Do not open a public issue for a suspected vulnerability. Contact the project ma
 
 ## Latest Scan Finding Disposition
 
-The April 23, 2026 release-hardening scan found no critical or high Docker Scout findings in CyberTabletop-owned images. Remaining findings are tracked below.
+The April 23, 2026 release-hardening scan found no critical or high Docker Scout findings in CyberTabletop-owned images. A follow-on GitHub dependency remediation pass on May 30, 2026 cleared the locally reproducible backend and frontend `npm audit` findings by upgrading `@anthropic-ai/sdk`, `express`, `express-rate-limit`, and the affected socket/websocket dependency chain. The container-image findings tracked below still reflect the April 23, 2026 Docker Scout / Grype review; those image scans were not rerun as part of the May 30 dependency-only update.
 
 | Finding | Source | Severity | Disposition |
 | --- | --- | --- | --- |
@@ -66,12 +66,15 @@ The April 23, 2026 release-hardening scan found no critical or high Docker Scout
 | Optional player MFA | Product policy | Operational risk | Privileged roles require MFA. Operators that require MFA for all users should enforce it through OIDC/SSO or local policy. |
 | Local password reset/email verification not implemented | Product scope | Operational risk | Use invite-gated registration, admin-led account management, or OIDC/SSO for stronger account lifecycle controls. |
 
-Clean checks from the same review:
+Clean checks from the current review set:
 
-- npm audit found 0 backend vulnerabilities and 0 frontend vulnerabilities.
+- `npm audit` now reports 0 backend vulnerabilities and 0 frontend vulnerabilities in the committed lockfiles.
+- `npm audit --omit=dev` reports 0 backend vulnerabilities and 0 frontend vulnerabilities for the production dependency trees.
+- Code-based verification passed on May 30, 2026: backend build, backend Vitest suite (5 files / 16 tests), frontend build, frontend lint, frontend Vitest suite (4 files / 7 tests).
+- Docker Compose config validation, isolated stack startup, container health checks, and direct HTTPS `/health` probing passed on May 30, 2026.
 - Gitleaks found no repository secrets with the project configuration.
 - OWASP ZAP baseline reported 0 failures.
-- Backend, frontend, and Nginx Docker Scout scans reported 0 critical and 0 high findings.
-- Redis Docker Scout scan reported 0 critical and 0 high findings.
+- Backend, frontend, and Nginx Docker Scout scans reported 0 critical and 0 high findings in the April 23, 2026 image review.
+- Redis Docker Scout scan reported 0 critical and 0 high findings in the April 23, 2026 image review.
 
 See `docs/RELEASE_SECURITY_REVIEW.md` for the full scan summary.
