@@ -169,8 +169,8 @@ The following risk register documents all identified risks, their analysis, curr
 | **Inherent Risk Level** | High |
 | **Current Controls** | npm audit in CI/CD; monthly vulnerability scanning; patch timelines by severity (critical: 30d) (SI-2, RA-5); Docker image scanning |
 | **Residual Risk Level** | Low |
-| **Recommended Mitigation** | Implement automated dependency update PRs (Dependabot); establish container image rebuild policy; subscribe to CVE feeds for all components |
-| **POA&M Reference** | POAM-003 |
+| **Recommended Mitigation** | Continue reviewing automated Dependabot update PRs; establish a repeatable container image rebuild policy; subscribe to CVE feeds for all major components |
+| **POA&M Reference** | POAM-003 (closed) and POAM-004 |
 
 ---
 

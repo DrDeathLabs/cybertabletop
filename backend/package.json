@@ -17,7 +17,7 @@
     "db:studio": "prisma studio"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.90.0",
+    "@anthropic-ai/sdk": "^0.100.1",
     "@prisma/client": "^5.22.0",
     "@types/pdfkit": "^0.17.5",
     "bcryptjs": "^3.0.3",
@@ -26,9 +26,9 @@
     "cors": "^2.8.5",
     "docx": "^9.6.1",
     "dotenv": "^17.4.2",
-    "express": "^4.21.1",
+    "express": "^4.22.2",
     "express-async-errors": "^3.1.1",
-    "express-rate-limit": "^8.4.0",
+    "express-rate-limit": "^8.5.2",
     "express-validator": "^7.3.2",
     "helmet": "^8.0.0",
     "jsonrepair": "^3.13.3",

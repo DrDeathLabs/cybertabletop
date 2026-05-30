@@ -6,6 +6,8 @@ Generated: April 23, 2026
 
 Tool: Docker Scout CLI `v1.20.3`
 
+These SBOM artifacts predate the May 30, 2026 GitHub dependency remediation update. Regenerate them before the next tagged release or image publish so the published dependency inventory matches the current lockfiles and container builds.
+
 ## Included Images
 
 | Component | Image | CycloneDX | SPDX |

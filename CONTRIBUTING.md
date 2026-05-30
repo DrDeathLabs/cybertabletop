@@ -21,7 +21,7 @@ Before opening a pull request:
 2. Run the backend tests: `cd backend && npm test`.
 3. Run the frontend build: `cd frontend && npm run build`.
 4. Run the frontend tests and lint when the change touches frontend behavior.
-5. Run dependency audits: `npm audit` in both `backend` and `frontend`.
+5. Run dependency audits: `npm audit --audit-level=moderate` in both `backend` and `frontend`. For dependency or security changes, also verify `npm audit --omit=dev` is clean in both projects.
 6. Update user, install, production, and security documentation when behavior or deployment guidance changes.
 7. Keep changes focused and explain any security impact.
 

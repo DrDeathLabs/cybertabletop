@@ -14,6 +14,7 @@ deployment safety.
 
 - [ ] User-facing docs updated if behavior changed
 - [ ] Security/deployment docs updated if controls or operational guidance changed
+- [ ] Security review and residual-risk notes updated when findings or dependency posture changed
 - [ ] No generated secrets, certificates, logs, database dumps, or build artifacts included
 
 ## Verification
@@ -25,3 +26,4 @@ deployment safety.
 - [ ] Frontend lint reviewed, when relevant
 - [ ] Dependency audit reviewed
 - [ ] Docker Compose config/build reviewed, when relevant
+- [ ] Runtime health check reviewed, when relevant

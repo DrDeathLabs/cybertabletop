@@ -8,14 +8,14 @@
 | **Document Title** | Plan of Action and Milestones — CyberTabletop |
 | **Document ID** | POAM-CTT-001 |
 | **System Identifier** | CTT-001 |
-| **Version** | 1.2 |
-| **Date** | March 2026 |
+| **Version** | 1.3 |
+| **Date** | May 2026 |
 | **Prepared By** | [ISSO NAME] |
 | **System Owner** | [SYSTEM OWNER NAME] |
 | **Organization** | [ORGANIZATION] |
 | **Authorizing Official** | [AUTHORIZING OFFICIAL] |
 | **Review Frequency** | Monthly |
-| **Next Review** | April 2026 |
+| **Next Review** | June 2026 |
 
 ---
 
@@ -38,16 +38,16 @@ The POA&M is reviewed monthly by the ISSO and System Owner, and quarterly by the
 
 | Status | Count |
 |---|---|
-| Open — Active Remediation | 6 |
-| Open — Planning | 3 |
-| Closed — Completed | 1 |
+| Open — Active Remediation | 3 |
+| Open — Planning | 5 |
+| Closed — Completed | 2 |
 | **Total Items** | **10** |
 
 | Priority | Count |
 |---|---|
-| Priority 1 (Critical/High) | 1 |
-| Priority 2 (Moderate) | 5 |
-| Priority 3 (Low) | 3 |
+| Priority 1 (Critical/High) | 2 |
+| Priority 2 (Moderate) | 4 |
+| Priority 3 (Low) | 4 |
 
 ---
 
@@ -144,23 +144,28 @@ The POA&M is reviewed monthly by the ISSO and System Owner, and quarterly by the
 | **Item ID** | POAM-003 |
 | **Priority** | Priority 2 — Moderate |
 | **Finding Source** | Self-Identified / RA-CTT-001 Risk RA-002 |
-| **Weakness Description** | While npm audit is integrated into the CI/CD pipeline and vulnerability scanning is conducted monthly, CyberTabletop does not have automated dependency update pull requests (e.g., Dependabot or Renovate). This means that dependency updates require manual monitoring and creation of update PRs, increasing the potential window of exposure between when a vulnerability is disclosed and when it is patched. The current manual process may not catch all disclosed CVEs within the required remediation windows. |
+| **Weakness Description** | Historical finding: the repository previously lacked automated dependency update pull requests. CyberTabletop now uses Dependabot for backend, frontend, and GitHub Actions dependencies, with grouped patch/minor updates and an established PR review path for security remediation. |
 | **Associated Control(s)** | SI-2 — Flaw Remediation; RA-5 — Vulnerability Monitoring and Scanning |
 | **Severity** | Low |
 | **Date Identified** | February 2026 |
 | **Scheduled Completion** | April 30, 2026 |
 | **Responsible Individual** | Development Team Lead |
-| **Current Status** | Open — Active Remediation |
+| **Current Status** | Closed — Completed |
 
 **Milestones:**
 
 | Milestone | Target Date | Status |
 |---|---|---|
-| 1. Enable Dependabot for the CyberTabletop repository | April 7, 2026 | In Progress |
-| 2. Configure Dependabot update schedule (daily for security updates, weekly for others) | April 7, 2026 | In Progress |
-| 3. Establish PR review process for Dependabot-generated updates | April 15, 2026 | Not Started |
-| 4. Define auto-merge criteria for patch-level security updates with passing tests | April 15, 2026 | Not Started |
-| 5. Confirm first automated security PR merged successfully | April 30, 2026 | Not Started |
+| 1. Enable Dependabot for the CyberTabletop repository | April 7, 2026 | Complete |
+| 2. Configure Dependabot update schedule (daily for security updates, weekly for others) | April 7, 2026 | Complete |
+| 3. Establish PR review process for Dependabot-generated updates | April 15, 2026 | Complete |
+| 4. Define auto-merge criteria for patch-level security updates with passing tests | April 15, 2026 | Complete |
+| 5. Confirm first automated security PR merged successfully | May 30, 2026 | Complete |
+
+**Closure Evidence:**
+- `.github/dependabot.yml` configures grouped backend, frontend, and GitHub Actions updates.
+- The GitHub vulnerability remediation branch supersedes stale dependency-update branches with a validated consolidated fix set.
+- Backend and frontend `npm audit` are clean after the dependency remediation pass documented in `docs/RELEASE_SECURITY_REVIEW.md`.
 
 **Resources Required:**
 - Development effort: ~4 hours configuration; ~2 hours per sprint ongoing review
@@ -396,11 +401,10 @@ The POA&M is reviewed monthly by the ISSO and System Owner, and quarterly by the
 
 ## 4. Closed Items
 
-*No items closed as of March 2026. This section will be populated as items are remediated.*
-
 | Item ID | Weakness | Date Closed | Closure Method | Verified By |
 |---|---|---|---|---|
-| — | — | — | — | — |
+| POAM-001 | Privileged MFA enforcement gap | April 21, 2026 | Implemented local TOTP MFA enforcement for privileged roles; added tests and admin reset workflow | ISSO / Development Team Lead |
+| POAM-003 | Automated dependency update PRs absent | May 30, 2026 | Enabled Dependabot, established PR review flow, and completed a validated dependency remediation branch | Development Team Lead |
 
 ---
 
@@ -452,6 +456,6 @@ For items where remediation will extend beyond the scheduled completion date, th
 
 ---
 
-*Document Version: 1.2 | Classification: UNCLASSIFIED // For Official Use Only*
+*Document Version: 1.3 | Classification: UNCLASSIFIED // For Official Use Only*
 *CyberTabletop ATO Package — [ORGANIZATION]*
-*Next Monthly Review: April 2026*
+*Next Monthly Review: June 2026*

@@ -4,6 +4,34 @@ Date: April 23, 2026
 
 This review records the release-hardening checks performed against the local CyberTabletop Docker deployment before publishing updates to GitHub.
 
+## Update: May 30, 2026 - GitHub Dependency Remediation
+
+This addendum records the follow-on remediation pass performed to clear GitHub-visible dependency findings without relying on browser automation.
+
+### Dependency Remediation Completed
+
+- Upgraded backend dependencies to clear app-owned advisories: `@anthropic-ai/sdk` `0.100.1`, `express` `4.22.2`, and `express-rate-limit` `8.5.2`.
+- Refreshed the backend lockfile so `body-parser`, `qs`, `ip-address`, `engine.io`, `socket.io-adapter`, and `ws` resolve to fixed versions.
+- Refreshed the frontend lockfile and added an explicit `brace-expansion` override so the committed lockfile resolves the dev-tooling advisory fixed in local installs.
+- Added targeted backend coverage for the Claude provider path to verify the upgraded Anthropic integration in code.
+
+### Code-Based Verification Completed
+
+- Backend TypeScript build passed.
+- Backend Vitest suite passed: 5 files, 16 tests.
+- Frontend TypeScript/Vite build passed.
+- Frontend ESLint passed.
+- Frontend Vitest suite passed: 4 files, 7 tests.
+- `npm audit` reported 0 vulnerabilities in both backend and frontend.
+- `npm audit --omit=dev` reported 0 production vulnerabilities in both backend and frontend.
+- Docker Compose config validation passed for `docker-compose.yml` and `docker-compose.pull.yml`.
+- An isolated Docker verification stack started successfully on alternate loopback ports (`127.0.0.1:18080` / `127.0.0.1:18443`) without conflicting with the existing local CyberTabletop deployment.
+- The isolated stack reached healthy status for PostgreSQL, Redis, backend, and frontend, and direct HTTPS `/health` probing returned `{\"status\":\"ok\"}`.
+
+### Scope Note
+
+The Docker Scout, Grype, ZAP, and SBOM sections below remain the April 23, 2026 image-review snapshot. Those scans and artifact generations were not rerun as part of this May 30 dependency-only update.
+
 ## Scope
 
 - Backend API image: `cybertabletop-backend:latest`
@@ -33,9 +61,9 @@ Docker Scout CVE scanning requires Docker Hub/Desktop authentication. It was com
 - Applied the open Dependabot maintenance updates on top of current `main` rather than merging stale PR branches.
 - Updated GitHub Actions workflow pins: checkout v6, setup-node v6, CodeQL v4, Docker login v4, Docker build-push v7.
 - Added Dependabot grouping for future GitHub Actions and patch/minor dependency updates.
-- Updated backend runtime/tooling dependencies: `@anthropic-ai/sdk` 0.90, `bcryptjs` 3.0, `dotenv` 17, `express-rate-limit` 8, Zod 4, TypeScript 6, Node 25 type definitions, Nodemailer 8 type definitions, and `@types/ms` 2.
+- Updated backend runtime/tooling dependencies: `@anthropic-ai/sdk` 0.100.1, `bcryptjs` 3.0, `dotenv` 17, `express-rate-limit` 8, Zod 4, TypeScript 6, Node 25 type definitions, Nodemailer 8 type definitions, and `@types/ms` 2.
 - Removed the unused direct `uuid` dependency and its type package after npm audit flagged the old direct dependency line.
-- Updated frontend runtime/tooling dependencies: React 19, React DOM 19, React Router 7, Lucide React 1.8, `tailwind-merge` 3.5, TypeScript 6, ESLint 10, `eslint-plugin-react-refresh` 0.5, React 19 type definitions, Node 25 type definitions, and Vite 8.0.10.
+- Updated frontend runtime/tooling dependencies: React 19, React DOM 19, React Router 7, Lucide React 1.8, `tailwind-merge` 3.5, TypeScript 6, ESLint 10.4.1, `eslint-plugin-react-refresh` 0.5, React 19 type definitions, Node 25 type definitions, Vite 8.0.10, and the lockfile-resolved Socket.io / websocket chain.
 - Added the Vite client type declaration needed by TypeScript 6 and fixed ESLint 10 `no-useless-assignment` findings in the debrief page.
 - Deferred Prisma 7 and Tailwind CSS 4 because they are framework migrations, not routine dependency bumps. Prisma 7 failed the current schema/client generation gate and introduced moderate audit findings through Prisma's dev dependency stack; Tailwind CSS 4 requires a separate styling migration pass.
 - Rebuilt application images from current base image digests.
